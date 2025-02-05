@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# pypi
+.egg-info
+
+# VS Code
+.vscode
+
 # Distribution / packaging
 .Python
 build/
