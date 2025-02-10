@@ -11,7 +11,6 @@ https://blog.research.google/2021/05/do-wide-and-deep-networks-learn-same.html
 import numpy as np
 import torch
 from torch import tensor, nn
-import math
 from typing import Dict, Any
 from torch.types import _device
 from torch.utils.data import DataLoader
@@ -22,8 +21,8 @@ class CKA(Metric):
     
     def __init__(
         self, 
-        name: str = "CKA_similarity", 
         device: _device = 'cpu', 
+        name: str = "CKA_similarity", 
     ) -> None:
         super().__init__(name)
         self.device = device

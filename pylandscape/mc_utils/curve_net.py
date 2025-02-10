@@ -1,7 +1,8 @@
 import torch
 from typing import Dict, Optional
 from torch.nn import Module
-from . import curved_model, CurveModule, Coeffs_t
+from .curve_converter import curved_model
+from .curve_module import CurveModule, Coeffs_t
 
 
 
@@ -96,7 +97,7 @@ class CurveNet(Module):
         
         # apply linear interpolation to intermediate models
         for name, param_list in band_dict.items():
-            print(f"init with linear interpolation layer: {name}")
+            # print(f"init with linear interpolation layer: {name}")
             for i in range (1, self.num_bends-1):
                 alpha = i * 1.0 / (self.num_bends - 1)
                 param_list[i].data.copy_(alpha * param_list[-1].data + (1.0 - alpha) * param_list[0].data)

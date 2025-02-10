@@ -1,9 +1,10 @@
+import torch
 import torch.nn as nn
+from tqdm import tqdm
 from torch import optim
 from torch.types import _device
 from torch.utils.data import DataLoader
 from . import CurveNet
-
 
 
 class Interpolate:
@@ -37,34 +38,51 @@ class Interpolate:
     
     def train_curve(self, dataloader: DataLoader, epochs: int) -> None:
         optimizer = optim.Adam(
-            filter(lambda param: param.requires_grad, self.parameters()),
-            lr=self.learning_rate
+            filter(lambda param: param.requires_grad, self.model.parameters()),
+            lr=self.lr
         )
         self.model = self.model.to(self.device)
+        self.model.train()
         for epoch in range(epochs):
             loss_hist_train = 0
-            for batch, target in dataloader:
-                batch, target = batch.to(self.device), target.to(self.device)
-                pred = self.model(batch, None)
-                loss = self.criterion(pred, target)
-                loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
-                loss_hist_train += loss.item()
-            loss_hist_train /= len(dataloader)
-            print(f"Epochs: {epoch}/{epochs} - Train loss: {loss_hist_train:.4f}")
+            
+            with tqdm(dataloader, unit="batch") as tepoch:
+                tepoch.set_description(f"Epoch {epoch+1}/{epochs}")
+                
+                for batch, target in tepoch:
+                    batch, target = batch.to(self.device), target.to(self.device)
+                    
+                    optimizer.zero_grad()
+                    pred = self.model(batch, None)
+                    loss = self.criterion(pred, target)
+                    loss.backward()
+                    optimizer.step()
+                    
+                    loss_hist_train += loss.item()
+                    tepoch.set_postfix(loss=loss.item())
+                    
+                loss_hist_train /= len(dataloader)
+                
+            print(f"Epoch {epoch+1}/{epochs} - Train loss: {loss_hist_train:.4f}")
                 
     
     def sample_model(self, dataloader: DataLoader, t: float) -> None:
-        print(f"\nTesting with t = {self.t.item()}\n")
         self.model.eval()
         loss_hist_test = 0
-        for batch, target in dataloader:
-            batch, target = batch.to(self.device), target.to(self.device)
-            pred = self.model(batch, self.t)
-            loss = self.criterion(pred, target)
-            loss_hist_test += loss.item()
+        with torch.no_grad():
+            with tqdm(dataloader, unit="batch") as tepoch:
+                tepoch.set_description(f"Testing with t = {t.item():.4f}")
+                
+                for batch, target in tepoch:
+                    batch, target = batch.to(self.device), target.to(self.device)
+                    
+                    pred = self.model(batch, t)
+                    loss = self.criterion(pred, target)
+                    
+                    loss_hist_test += loss.item()
+                    tepoch.set_postfix(loss=loss.item())
+                
         loss_hist_test /= len(dataloader)
-        print(f"Test loss: {loss_hist_test:.4f}")
+        print(f"\n###\tTest loss: {loss_hist_test:.4f}\t###\n")
         return loss_hist_test
 

@@ -2,6 +2,7 @@ import torch
 from torch.types import _device
 from torch import nn, tensor
 from torch.utils.data import DataLoader
+from typing import Callable
 from . import Metric
 from .mc_utils import curves, Interpolate
 
@@ -32,7 +33,7 @@ class ModeConnectivity(Metric):
         self, 
         model1: nn.Module,
         model2: nn.Module,
-        criterion: nn.Module,
+        criterion: Callable,
         train_dataloader: DataLoader,
         test_dataloader: DataLoader,
         learning_rate: float,

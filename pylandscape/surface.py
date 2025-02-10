@@ -235,7 +235,12 @@ class Surface(Metric):
         return lams, lams, loss_surface
     
     
-    def hessian_line(self, lams: Tuple[float, float], steps: int, max_iter: int = 100) -> Tuple[np.ndarray, np.ndarray]:
+    def hessian_line(
+        self, 
+        lams: Tuple[float, float], 
+        steps: int, 
+        max_iter: int = 100
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Generate the loss plot of model perturbed along the top eigenvector of the model. 
 
@@ -264,7 +269,12 @@ class Surface(Metric):
         return lams, loss_list
     
     
-    def hessian_surface(self, lams: Tuple[float, float], steps: int, max_iter: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def hessian_surface(
+        self, 
+        lams: Tuple[float, float], 
+        steps: int, 
+        max_iter: int = 100
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Generate the loss plot of model perturbed along the top-2 eigenvectors of the model. 
 

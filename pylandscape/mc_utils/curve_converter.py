@@ -4,7 +4,7 @@ from copy import deepcopy
 from torch import nn
 from torch.nn import Module
 from typing import List
-from . import Conv2d, Linear, ConvTranspose2D
+from .curve_module import Conv2d, Linear, ConvTranspose2D
 
 
 def rgetattr(obj, attr, *args):
