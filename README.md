@@ -3,10 +3,10 @@
 ## Introduction
 PyLandscape is a pytorch library for Hessian based analysis of neural network models. The library enables computing the following metrics:
 
-- [CKA similarity]()
+- [CKA similarity](https://arxiv.org/pdf/2010.15327)
 - [Hessian metrics](https://arxiv.org/pdf/1912.07145)
-- [Mode connectivity]()
-- [Loss surface]()
+- [Mode connectivity](https://arxiv.org/pdf/1802.10026)
+- [Loss surface](https://arxiv.org/pdf/1712.09913)
 
 *NOTE*: All the functionalities relative to the computation of the Hessian metrics have been embedded via [PyHessian](https://github.com/amirgholami/PyHessian). If your interested in learning more about how these metrics are computed have a look to their Repository.
 
