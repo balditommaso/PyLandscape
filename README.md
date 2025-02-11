@@ -1,7 +1,7 @@
 # PyLandscape
 
 ## Introduction
-PyLandscape is a pytorch library for Hessian based analysis of neural network models. The library enables computing the following metrics:
+`pylandscape` is a pytorch library for Hessian based analysis of neural network models. The library enables computing the following metrics:
 
 - [CKA similarity](https://arxiv.org/pdf/2010.15327)
 - [Hessian metrics](https://arxiv.org/pdf/1912.07145)
@@ -13,7 +13,7 @@ PyLandscape is a pytorch library for Hessian based analysis of neural network mo
 
 ## Usage
 ### Install from Pip
-You can install the library from pip (soon available)
+You can install the library from pip (soon available!)
 ```
 pip install pylandscape
 ```
@@ -22,7 +22,7 @@ pip install pylandscape
 You can also compile the library from source
 ```
 git clone https://github.com/balditommaso/PyLandscape.git
-python setup.py install
+pip install .
 ```
 
 TODO: add usage

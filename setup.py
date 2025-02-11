@@ -7,7 +7,7 @@ with open("README.md", "r") as f:
 setup(
     name="pylandscape",
     version="0.0.10",
-    description="Pythone package to explore the loss landscape of Machine Learning models",
+    description="Python package to explore the loss landscape of Machine Learning models",
     package_dir={"": "pylandscape"},
     packages=find_packages(where="pyhessian"),
     long_description=long_description,
@@ -19,6 +19,14 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
+    ],
+    install_requires=[
+        "torch",
+        "numpy",
+        "pandas",
+        "scipy",
+        "tqdm",
+        "PyHessian"
     ],
     extras_require={
         "dev": ["twine>=4.0.2"]
