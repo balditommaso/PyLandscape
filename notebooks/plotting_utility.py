@@ -1,5 +1,6 @@
 import os
 import ast
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -66,7 +67,6 @@ def plot_precision_vs_emd(
     plt.tick_params(axis='both', which='major', labelsize=TICK_SIZE) 
     plt.xlabel("Precision", fontsize=LABEL_SIZE)
     plt.ylabel("EMD", fontsize=LABEL_SIZE)
-    plt.tick_params(axis='both', which='major', labelsize=TICK_SIZE)  
 
     # plt.title(title, fontsize=16)
     if plot_legend:
@@ -77,9 +77,60 @@ def plot_precision_vs_emd(
     plt.grid(True)
     plt.show()
 
+
+def plot_precision_vs_metrics(
+    values: pd.DataFrame, 
+    group_by: str, 
+    x: str, 
+    y: str, 
+    y_std: Optional[str] = None, 
+    log_scale: bool = False, 
+    plot_legend: bool = False,
+    ylim: Optional[Tuple[float, float]] = None
+) -> None:
+    plt.figure(figsize=FIG_SIZE)
+
+    # group data and plot each group with mean and std shading
+    for label, df_group in values.groupby(group_by):
+        # Plot mean line for the group
+        plt.plot(df_group[x], df_group[y], marker='o', linewidth=LINE_WIDTH, label=label)
+        
+        # plot shaded area for standard deviation
+        if y_std is not None:
+            plt.fill_between(
+                df_group[x],
+                df_group[y] - df_group[y_std],
+                df_group[y] + df_group[y_std],
+                alpha=0.1  
+            )
+
+    if log_scale:
+        plt.yscale('log')
+    if ylim is not None:
+        plt.ylim(ylim)
+        
+    plt.tick_params(axis='both', which='major', labelsize=TICK_SIZE)  # Increase major tick label size
+    plt.xlabel("Precision", fontsize=LABEL_SIZE)
+    plt.ylabel(y, fontsize=LABEL_SIZE)
+    
+    if plot_legend:
+        legend = plt.legend(title=group_by, fontsize=LABEL_SIZE-2)
+        legend.set_title(group_by, prop={'size': LABEL_SIZE, 'weight': 'bold'}) 
+
+    plt.grid(True)
+    plt.show()
+    
 # ---------------------------------------------------------------------------- #
 #                                    UTILITY                                   #
 # ---------------------------------------------------------------------------- #
+def load_from_pickle(dir_path: str, file: str):
+    full_file_path = os.path.join(dir_path, file)
+    # Ensure the file has a .pkl or .pickle extension before loading
+    if file.endswith('.pkl') or file.endswith('.pickle'):
+        with open(full_file_path, 'rb') as f:
+            return pickle.load(f)
+
+
 def get_econ_results(
     path: str, 
     tag: str = "accuracy", 
@@ -108,6 +159,40 @@ def get_econ_results(
     
     return getattr(np, aggregate)(results)
 
+
+def get_metrics_results(dir_path: str, file_tag: str, key: str, aggregate: str = 'mean') -> np.ndarray:
+    if os.path.exists(dir_path) and os.path.isdir(dir_path):
+        files = os.listdir(dir_path)
+        result_files = [file for file in files if file_tag in file and file.endswith(".pkl")]
+        results = []
+        # we have many files with the same tag
+        if len(result_files) == 0:
+            print(f"Warning: File not found!\n\tpath: {dir_path}")
+            return np.NaN
+        if len(result_files) > 1:
+            for file in result_files:
+                data = load_from_pickle(dir_path, file)
+                res = data[key]
+                if isinstance(res, list) and len(res) > 1:
+                    # aggregate the results
+                    results.extend(res)
+                else:
+                    results.append(res)
+            # aggregate the results
+            return getattr(np, aggregate)(results)
+        # just one file found
+        data = load_from_pickle(dir_path, result_files[0])
+        res = data[key]
+        if isinstance(res, list) and len(res) > 1:
+            # aggregate the results
+            return getattr(np, aggregate)(res)
+        
+        print(f"Aggregation not used for {file_tag} - {key}")
+        return res
+    # error directory not found
+    else:
+        print(f"Directory not found!\n\tpath: {dir_path}")
+        return np.NaN
 
 def create_dir(path: str) -> None:
     if not os.path.exists(path):
@@ -159,6 +244,7 @@ def load_econ_performance(tags: List[str], noise_modules: List[str], verbose: bo
     create_dir("./results/econ")
     df.to_csv("./results/econ/noise.csv", index=False)
     
+
 def load_econ_bit_flip(tags: List[str], num_bits: List[int]) -> None:
     # store the results
     records = []
@@ -204,3 +290,49 @@ def load_econ_bit_flip(tags: List[str], num_bits: List[int]) -> None:
     df = pd.DataFrame(records)
     create_dir("./results/econ")
     df.to_csv("./results/econ/bit_flip.csv", index=False)
+    
+    
+def load_econ_metrics(tags: List[str]) -> None:
+    # store the results
+    records = []
+    for p in precisions:
+        for x, bs in enumerate(batch_sizes):
+            for y, lr in enumerate(learning_rates):
+                for tag in tags:
+                    # build the path
+                    path = None
+                    if tag == "baseline":
+                        path = os.path.join(DATA_PATH, f"bs{bs}_lr{lr}/ECON_{p}b")
+                    else:
+                        path = os.path.join(DATA_PATH, f"bs{bs}_lr{lr}/ECON_{tag}_{p}b")    
+                    
+                    mc_max = get_metrics_results(path, "Bezier", "mode_connectivity", "max")
+                    mc_min = get_metrics_results(path, "Bezier", "mode_connectivity", "min")
+                    max_dev = mc_max if abs(mc_max) > abs(mc_min) else mc_min
+                            
+                    records.append({
+                        "batch_size": bs,
+                        "learning_rate": lr,
+                        "precision": p,
+                        "regularizer": labels[tag],
+                        "CKA": get_metrics_results(path, "CKA", "CKA_similarity", "mean"),
+                        "CKA_median": get_metrics_results(path, "CKA", "CKA_similarity", "median"),
+                        "CKA_std": get_metrics_results(path, "CKA", "CKA_similarity", "std"),
+                        "CKA_max": get_metrics_results(path, "CKA", "CKA_similarity", "max"),
+                        "CKA_min": get_metrics_results(path, "CKA", "CKA_similarity", "min"),
+                        "Hessian trace": get_metrics_results(path, "hessian", "trace", "mean"),
+                        "h_trace_max": get_metrics_results(path, "hessian", "trace", "max"),
+                        "h_trace_std": get_metrics_results(path, "hessian", "trace", "std"),
+                        "Top eigenvalue": get_metrics_results(path, "hessian", "eigenvalue", "mean"),
+                        "top_eigen_max": get_metrics_results(path, "hessian", "eigenvalue", "max"),
+                        "top_eigen_std": get_metrics_results(path, "Bezier", "mode_connectivity", "mean"),
+                        "mc_median": get_metrics_results(path, "Bezier", "mode_connectivity", "median"),
+                        "mc_std": get_metrics_results(path, "Bezier", "mode_connectivity", "std"),
+                        "max mc": max_dev
+                    })
+                    
+                    
+    df = pd.DataFrame(records)
+    create_dir("./results/econ")
+    df.to_csv("./results/econ/metrics.csv", index=False)
+    

@@ -3,16 +3,17 @@ import os
 import abc
 
 class Metric(abc.ABC):
-    '''
+    """
     Class used to allow the loss landscape metrics to inherit basic methods and template
-    '''
+    """
     def __init__(self, name: str) -> None:       
         self.name = name
         self.results = {}
     
     
     def save_on_file(self, path: str) -> None:
-        """_summary_
+        """
+        Method used to save the dictionary with the results on pickle file. 
 
         Args:
             path (str): path to the destination directory.

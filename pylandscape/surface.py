@@ -303,35 +303,5 @@ class Surface(Metric):
         return lams, lams, loss_surface
 
     
-    # def save_plot_as_image(self, direction: str, path: str):
-    #     assert self.results is not None, "Result not computed yet!"
-        
-    #     loss = self.results[direction]['loss']
-    #     fig = plt.figure()
-    #     if not isinstance(loss, list):
-    #         lam1 = self.results[direction]['lambda1']
-    #         lam2 = self.results[direction]['lambda2']
-    #         # create a meshgrid for lam1 and lam2 if they are 1D
-    #         lam1, lam2 = np.meshgrid(lam1, lam2)
-    #         # create a 3D plot
-    #         ax = fig.add_subplot(111, projection='3d')
-    #         # plot the surface
-    #         ax.plot_surface(lam1, lam2, loss, rstride=1, cstride=1, cmap='viridis', edgecolor='none')
-    #         # add title and labels
-    #         ax.set_title(f'3D Loss Surface for {direction}')
-    #         ax.set_xlabel('λ1')
-    #         ax.set_ylabel('λ2')
-    #         ax.set_zlabel('Loss')
-    #     else:
-    #         lam = self.results[direction]['lambda']
-    #         plt.plot(lam, loss, label=f'{direction} Loss Curve')
-    #         # plt.yscale('log')
-    #         plt.xlabel('λ')
-    #         plt.ylabel('Loss')
-    #         plt.legend()
-    #         plt.grid(True)  # Optional: to display grid lines for better visualization
-        
-    #     # Save the figure to the specified path
-    #     fig.savefig(os.path.join(path, f"{self.name}_{direction}.png"))
-    #     plt.close(fig) 
+
         
