@@ -40,4 +40,4 @@ TODO: add usage
 ## Citation
 PyLandscape has been developed as part of the following paper. We appreciate it if you would please cite the following paper if you found the library useful for your work:
 
-* T. Baldi, J. Campos, O. Weng, C. Geniesse, N. Tran, R. Kastner, A. Biondi. Loss Landscape Analysis for Reliable Quantized ML Models for Scientific Sensing, 2025, [PDF]().
+* T. Baldi, J. Campos, O. Weng, C. Geniesse, N. Tran, R. Kastner, A. Biondi. Loss Landscape Analysis for Reliable Quantized ML Models for Scientific Sensing, 2025, [PDF](http://arxiv.org/abs/2502.08355).
