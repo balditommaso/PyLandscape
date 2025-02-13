@@ -28,7 +28,7 @@ pip install .
 ### Download the HGCAL dataset
 You can download the dataset for the ECON-T model
 ```
-wget -P ./data/ECON/ https://cseweb.ucsd.edu/~oweng/hgcal_dataset/hgcal22data_signal_driven_ttbar_v11.tar.gz 
+wget -P ./data/ECON/ https://retis.santannapisa.it/~tbaldi/hgcal_dataset/hgcal22data_signal_driven_ttbar_v11.tar.gz 
 tar -xvf ./data/ECON/hgcal22data_signal_driven_ttbar_v11.tar.gz -C ./data/ECON
 mv ./data/ECON/hgcal22data_signal_driven_ttbar_v11/nElinks_5/*.csv ./data/ECON/
 ```
