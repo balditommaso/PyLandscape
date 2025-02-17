@@ -19,6 +19,8 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3.8",
+        "Development Status :: 3 - Alpha"
     ],
     install_requires=[
         "torch",

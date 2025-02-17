@@ -1,0 +1,90 @@
+save_dir: 'ECON'
+
+# dataset config
+data:
+  name: AutoEncoderDataModule
+  data_path: ./data/ECON/
+  num_workers: 1
+  train_size: 0.8
+  val_size: 0.1
+  test_size: 0.1
+
+
+model:
+  name: AutoEncoder
+  size: 'baseline'
+  quantization:
+    verbose: 0
+    input_quant: CommonIntActQuant
+    
+
+fit:
+  # learning rate scheduler
+  lr_scheduler: none
+  # regularization during training
+  regularizer:
+    l1: 0.0
+    l2: 0.0
+    jacobian: 0.0
+    parseval: 0.0
+  
+  # callbacks
+  # early_stopping:
+  #   monitor: val_loss 
+  #   min_delta: 0.005 
+  #   patience: 50  # removing the early stopping
+  #   verbose: 1
+  #   mode: min
+  model_checkpoint:
+    save_top_k: 1
+    save_last: 0
+    monitor: val_loss 
+    mode: min
+    auto_insert_metric_name: 0
+  # PL trainer config
+  trainer:
+    max_epochs: 100
+    accelerator: gpu
+    strategy: ddp
+
+
+test:
+  noise:
+    type:
+      - gaussian
+      - salt_pepper
+    percentage:
+      - 5
+      - 10
+      - 15
+      - 20
+      - 50
+  bit_flip:
+    n_bits:
+      - 1
+      - 5
+      - 10
+      - 20
+    strategy:
+      - fkeras
+      - random
+  plot:
+    min_lam: -0.15
+    max_lam: 0.15
+    steps: 200
+  mode_connectivity:
+    curve: Bezier
+    num_bends: 3
+    num_points: 60
+    max_epochs: 100
+  cka:
+    batch_size: 10
+    num_outputs: 5
+    num_runs: 1
+    # noise_type: gaussian
+    # noise_module: 1
+  hessian:
+    n_iter: 100
+    top_n: 1
+
+

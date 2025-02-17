@@ -1,5 +1,5 @@
 #!/bin/bash
-SAVING_FOLDER="../checkpoint"       
+SAVING_FOLDER="./checkpoint"       
 
 pretrained=0
 full_precision=0
@@ -84,7 +84,7 @@ handle_options() {
 
 run_train() {
     saving_folder="$SAVING_FOLDER/bs$batch_size"_lr$learning_rate/
-
+    mkdir log
     pids=()
     for i in $(eval echo "{1..$num_test}")
     do
@@ -121,7 +121,7 @@ run_train() {
             export CUDA_VISIBLE_DEVICES=$device_id
         fi
 
-        $cmd > "$HOME/quantized_loss_landscape/log/log_$precision"_"$i.txt" 2>&1 &
+        $cmd > "./log/log_$precision"_"$i.txt" 2>&1 &
 
         pids+=($!)
         echo ""

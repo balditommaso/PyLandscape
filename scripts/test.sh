@@ -1,5 +1,5 @@
 #!/bin/bash
-SAVING_FOLDER="../checkpoint"    
+SAVING_FOLDER="./checkpoint"    
 
 # Default variable values
 batch_size=8

@@ -16,15 +16,15 @@ warnings.filterwarnings("ignore")
 
 def argument_parser():
     parser = ArgumentParser()
-    parser.add_argument("--config", type=str, default="./config.yml", help='Path to the configuration file.')
-    parser.add_argument("--saving_folder", type=str, help='Path to the saving directory.')
-    parser.add_argument("--precision", type=int, default=8, help='Bit width of the model.')
-    parser.add_argument("--lr", type=float, default=0.0015625, help='Batch size.')
+    parser.add_argument("--config", type=str, default="./config.yml", help="Path to the configuration file.")
+    parser.add_argument("--saving_folder", type=str, help="Path to the saving directory.")
+    parser.add_argument("--precision", type=int, default=8, help="Bit width of the model.")
+    parser.add_argument("--lr", type=float, default=0.0015625, help="Batch size.")
     parser.add_argument("--batch_size", type=int, default=512, help="Learning rate.")
-    parser.add_argument("--experiment", type=int, default=1, help='Number of the experiment running.')
-    parser.add_argument('--pretrained', action='store_true', default=False, help='Start from a pretrained version of the model.')
-    parser.add_argument('--no_train', action='store_true', default=False, help='Skip the training part.')
-    parser.add_argument('--recover', action='store_true', default=False, help='Skip the training part.')
+    parser.add_argument("--experiment", type=int, default=1, help="Number of the experiment running.")
+    parser.add_argument("--pretrained", action="store_true", default=False, help="Start from a pretrained version of the model.")
+    parser.add_argument("--no_train", action="store_true", default=False, help="Skip the training part.")
+    parser.add_argument("--recover", action="store_true", default=False, help="Skip the training part.")
 
     # NOTE: use it only for debugging
     parser.add_argument("--fast_dev_run", action="store_true", default=False)
@@ -45,44 +45,44 @@ def main():
     )
     experiment = f"{config['save_dir'].lower()}_{args.experiment}"
     print(f"Saving to dir:\t\t{save_dir}")
-    print(f'Running experiment:\t{experiment}')
+    print(f"Running experiment:\t{experiment}")
     
     # device -> NOTE: designed for single GPU train
     device = torch.device("cpu")
     if torch.cuda.is_available():
         device = torch.device("cuda")
-        torch.set_float32_matmul_precision('high')
+        torch.set_float32_matmul_precision("high")
         torch.cuda.empty_cache()
         
     # ---------------------------------------------------------------------------- #
     #                                  Data Module                                 #
     # ---------------------------------------------------------------------------- #
-    data_cfg = config['data']
-    if not hasattr(dm, data_cfg['name']):
+    data_cfg = config["data"]
+    if not hasattr(dm, data_cfg["name"]):
         raise ValueError(f"Not Valid data module: {data_cfg['name']} ")
     # get the instance of the required data module
-    data_module = getattr(dm, data_cfg['name'])(batch_size=args.batch_size, **data_cfg)
+    data_module = getattr(dm, data_cfg["name"])(batch_size=args.batch_size, **data_cfg)
 
     # ---------------------------------------------------------------------------- #
     #                                Lightning model                               #
     # ---------------------------------------------------------------------------- #
     # starting from a pretrained model
-    model_cfg = config['model']
+    model_cfg = config["model"]
     model_args = dict(
         config=args.config,
         quantized=args.precision < 32,
         bit_width=args.precision,
         learning_rate=args.lr
     )
-    if not hasattr(models, model_cfg['name']):
+    if not hasattr(models, model_cfg["name"]):
         raise ValueError(f"Not Valid model: {model_cfg['name']} ")
     # get the instance of the required model
-    architecture = getattr(models, model_cfg['name'])
+    architecture = getattr(models, model_cfg["name"])
     
     # load the data from the full precision version
     if args.pretrained:
         # checkpoint path
-        full_precision_ckpt = config['save_dir'].split("_")[0]
+        full_precision_ckpt = config["save_dir"].split("_")[0]
         model_ckpt = os.path.join(
             args.saving_folder, 
             f"{full_precision_ckpt}_32b/"
@@ -121,21 +121,27 @@ def main():
     # ---------------------------------------------------------------------------- #
     # tensorboard directory
     tb_logger = pl_loggers.TensorBoardLogger(save_dir, name=f"{experiment}_logs")
+    
     # monitor the learning rate and the scheduler
-    lr_monitor = LearningRateMonitor('epoch')
-    # stop training when model converges
-    early_stop_callback = EarlyStopping(**config['fit']['early_stopping'])
+    callbacks = [LearningRateMonitor("epoch")]
+    
     # save top checkpoints based on val_loss
     top_checkpoint_callback = ModelCheckpoint(
-        **config['fit']['model_checkpoint'],
+        **config["fit"]["model_checkpoint"],
         dirpath=save_dir,
         filename=f"{experiment}_best"
     )
+    callbacks.append(top_checkpoint_callback)
+            
+    # stop training when model converges
+    if hasattr(config["fit"], "early_stopping"):
+        callbacks.append[EarlyStopping(**config["fit"]["early_stopping"])]
+    
     trainer = pl.Trainer(
-        **config['fit']['trainer'],
-        devices='auto',
+        **config["fit"]["trainer"],
+        devices="auto",
         logger=tb_logger,
-        callbacks=[lr_monitor, top_checkpoint_callback, early_stop_callback],
+        callbacks=callbacks,
         fast_dev_run=args.fast_dev_run    
     )
     
@@ -149,10 +155,10 @@ def main():
             val_dataloaders=data_module.val_dataloader()
         )        
         
-        pl_model = getattr(models, model_cfg['name']).load_from_checkpoint(
-                top_checkpoint_callback.best_model_path,
-                strict=True
-            )
+        pl_model = getattr(models, model_cfg["name"]).load_from_checkpoint(
+            top_checkpoint_callback.best_model_path,
+            strict=True
+        )
     
     # ---------------------------------------------------------------------------- #
     #                                Evaluate model                                #

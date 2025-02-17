@@ -13,7 +13,7 @@
 
 ## Usage
 ### Install from Pip
-You can install the library from pip (soon available!)
+You can install the library from pip:
 ```
 pip install pylandscape
 ```
@@ -22,7 +22,7 @@ pip install pylandscape
 You can also compile the library from source
 ```
 git clone https://github.com/balditommaso/PyLandscape.git
-pip install .
+pip install -r requirements.txt
 ```
 
 ### Download the HGCAL dataset
@@ -32,10 +32,31 @@ wget -P ./data/ECON/ https://retis.santannapisa.it/~tbaldi/hgcal_dataset/hgcal22
 tar -xvf ./data/ECON/hgcal22data_signal_driven_ttbar_v11.tar.gz -C ./data/ECON
 mv ./data/ECON/hgcal22data_signal_driven_ttbar_v11/nElinks_5/*.csv ./data/ECON/
 ```
-### Download the HGCAL dataset
+### Download the Fusion dataset
 Soon available!
 
-TODO: add usage
+### Train the models
+1. Train full precision (FP32) version of the model:
+```
+. scripts/train.sh \
+    --config ./config/econ/baseline.yml \
+    --bs 1024 \
+    --lr 0.0015625 \
+    --device_id 0 \
+    --num_test 3 \
+    --full_precision
+```
+
+2. Fine tune the models with QAT:
+```
+. scripts/train.sh \
+    --config ./config/econ/baseline.yml \
+    --bs 1024 \
+    --lr 0.0015625 \
+    --device_id 0 \
+    --num_test 3 \
+    --pretrained
+```
 
 ## Citation
 PyLandscape has been developed as part of the following paper. We appreciate it if you would please cite the following paper if you found the library useful for your work:
