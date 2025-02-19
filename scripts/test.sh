@@ -86,7 +86,7 @@ run_test() {
         precision=32
     fi
     saving_folder="$SAVING_FOLDER/bs$batch_size"_lr"$learning_rate/"
-
+    mkdir log
     echo ""
     echo " BATCH SIZE $batch_size - LEARNING_RATE $learning_rate - PRECISION $precision - test $i "
     echo ""
@@ -104,7 +104,7 @@ run_test() {
         --lr $learning_rate \
         --num_models $num_models"
 
-    $cmd > "$HOME/quantized_loss_landscape/log/log_test_$precision.txt" 2>&1 &
+    $cmd > "./log/log_test_$precision.txt" 2>&1 &
 
     echo ""
     echo "-----------------------------------------------------------"

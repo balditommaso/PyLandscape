@@ -6,13 +6,14 @@ with open("README.md", "r") as f:
     
 setup(
     name="pylandscape",
-    version="0.0.10",
+    version="0.0.11",
     description="Python package to explore the loss landscape of Machine Learning models",
     package_dir={"": "pylandscape"},
-    packages=find_packages(where="pyhessian"),
+    packages=find_packages(where="pylandscape"),
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/balditommaso/PyLandscape",
+    download_url="https://github.com/balditommaso/PyLandscape/archive/refs/tags/main.tar.gz",
     author="Tommaso Baldi",
     author_email="tommaso.baldi@santannapisa.it",
     license="MIT",

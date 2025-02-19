@@ -137,7 +137,7 @@ class BitFlip:
         # get the indices if necessary
         if strategy == "random":
             self.indices = torch.randint(0, self.num_bits, size=(self.num_bits,)).tolist()
-        elif strategy == "fkeras" and self.indices is None:
+        elif strategy == "fkeras":
             hessian = Hessian(self.model, self.model.criterion, self.dataloader)
             param_ranking, _ = hessian.hessian_rank()
             self.indices = self.from_param_ranking_to_bit_ranking(param_ranking)

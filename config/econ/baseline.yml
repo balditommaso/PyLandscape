@@ -81,8 +81,6 @@ test:
     batch_size: 10
     num_outputs: 5
     num_runs: 1
-    # noise_type: gaussian
-    # noise_module: 1
   hessian:
     n_iter: 100
     top_n: 1
