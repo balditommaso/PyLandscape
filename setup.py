@@ -6,10 +6,9 @@ with open("README.md", "r") as f:
     
 setup(
     name="pylandscape",
-    version="0.0.11",
+    version="0.0.15",
     description="Python package to explore the loss landscape of Machine Learning models",
-    package_dir={"": "pylandscape"},
-    packages=find_packages(where="pylandscape"),
+    packages=["pylandscape", "pylandscape.mc_utils"],
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/balditommaso/PyLandscape",
