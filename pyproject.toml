@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pylandscape"
-version = "0.0.15"
+version = "0.0.0"
 description = "Python package to explore the loss landscape of Machine Learning models"
 authors = ["Tommaso Baldi <tommaso.baldi@santannapisa.it>"]
 license = "MIT"
@@ -20,17 +20,6 @@ pandas = "*"
 scipy = "*"
 tqdm = "*"
 PyHessian = "*"
-
-[tool.poetry.extras]
-dev = ["twine>=4.0.2"]
-
-[tool.poetry.classifiers]
-classifiers = [
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.8",
-    "Development Status :: 3 - Alpha"
-]
 
 [build-system]
 requires = ["poetry-core"]
