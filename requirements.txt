@@ -7,7 +7,7 @@ PyHessian==0.1
 pytorch-lightning==2.3.0
 PyYAML==6.0.1
 scipy
-setuptools==69.5.1
+setuptools==70.0.0
 torch==2.3.0
 torchmetrics==1.4.0.post0
 torchvision==0.18.0
