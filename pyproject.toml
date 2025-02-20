@@ -19,7 +19,7 @@ pandas = "*"
 scipy = "*"
 torch = "2.3.0"
 tqdm = "*"
-PyHessian = "1.0.0"
+PyHessian = "*"
 
 [build-system]
 requires = ["poetry-core"]
