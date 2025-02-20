@@ -76,7 +76,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ">=3.8"
+          python-version: "==3.8"
 
       - name: Install Poetry
         run: |
@@ -90,6 +90,10 @@ jobs:
       - name: Update pip, setuptools, and wheel
         run: |
           python3 -m pip install --upgrade pip setuptools wheel
+
+      - name: Run poetry lock
+        run: |
+          poetry lock
 
       - name: Install dependencies
         run: poetry install --no-interaction
