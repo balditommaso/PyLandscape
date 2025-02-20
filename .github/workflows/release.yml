@@ -87,8 +87,12 @@ jobs:
         run: |
           poetry version ${{ needs.details.outputs.new_version }}
 
+      - name: Update pip, setuptools, and wheel
+        run: |
+          python3 -m pip install --upgrade pip setuptools wheel
+
       - name: Install dependencies
-        run: poetry install --sync --no-interaction
+        run: poetry sync install --no-interaction
 
       - name: Build source and wheel distribution
         run: |
