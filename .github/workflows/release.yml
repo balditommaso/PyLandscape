@@ -92,7 +92,7 @@ jobs:
           python3 -m pip install --upgrade pip setuptools wheel
 
       - name: Install dependencies
-        run: poetry sync install --no-interaction
+        run: poetry install --no-interaction
 
       - name: Build source and wheel distribution
         run: |
