@@ -4,7 +4,6 @@ from typing import Union, Tuple, Mapping, Any
 import pytorch_lightning as pl
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR, CosineAnnealingLR, OneCycleLR
-from itertools import starmap
 from datamodule.telescope_loss.utils_pt import unnormalize, emd 
 from collections import OrderedDict
 from .utils import yaml_load
@@ -136,8 +135,8 @@ class AutoEncoder(pl.LightningModule):
             self.encoder = quantize_model(self.encoder, bit_width, fold_quant_input=False, **quant_cfg)
         
         self.criterion = telescopeMSE8x8
-        self.input_calQ = []
-        self.output_calQ = []
+        self.emd_sum = tensor(0.0)
+        self.num_sample = tensor(0)
         
         self.scheduler = config['fit']['lr_scheduler']
         # regularizer
@@ -281,7 +280,7 @@ class AutoEncoder(pl.LightningModule):
         loss = self.criterion(input_hat, target)
         self.log("val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True)
 
-    
+
     def test_step(self, batch: Tuple[tensor, tensor], batch_idx: int):
         input, target = batch
         output = self(input)
@@ -291,20 +290,13 @@ class AutoEncoder(pl.LightningModule):
             [input_calQ[i] * self.val_sum[i] for i in range(len(input_calQ))]
         )  
         output_calQ = unnormalize(torch.clone(output_calQ_fr), self.val_sum)  
-        self.input_calQ.append(input_calQ)
-        self.output_calQ.append(output_calQ)
+        batch_emd = tensor([emd(inp, out) for inp, out in zip(input_calQ, output_calQ)])
+        self.emd_sum += batch_emd.sum()
+        self.num_sample += batch_emd.numel()
     
-    
+
     def on_test_epoch_end(self):
-        # concatenate all the tensor coming from all the batches processed
-        input_calQ = torch.cat(self.input_calQ, dim=0)
-        output_calQ = torch.cat(self.output_calQ, dim=0)
-        self.input_calQ = []
-        self.output_calQ = []
-        # compute the average EMD
-        emd_list = torch.Tensor(list(starmap(emd, zip(input_calQ, output_calQ))))
-        average_emd = emd_list.nanmean().item()
-        result = {'AVG_EMD': average_emd}
+        result = {'AVG_EMD': (self.emd_sum / self.num_sample).item()}
         self.log_dict(result, sync_dist=True)
         return result
     

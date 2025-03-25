@@ -2,9 +2,10 @@ import yaml
 import os
 import pytorch_lightning as pl
 from typing import List, Union, Dict, Any
+from torch import nn
 from torch.types import _device
 from torch.utils.data import DataLoader
-
+from .quantization import quantize_model, CommonUintActQuant, CommonIntActQuant
 
 
 def save_on_file(path: str, res: Union[float, Dict[str, float]]) -> None:
@@ -27,6 +28,28 @@ def save_on_file(path: str, res: Union[float, Dict[str, float]]) -> None:
     with open(path, "w+") as f:
         f.write(str(res))
         f.close()
+
+
+def apply_quantization(model: nn.Module, bit_width: int, config: Dict[str, Any]) -> nn.Module:
+    # pick the right input quantization
+    input_quant = CommonUintActQuant
+    if "input_quant" in config and config["input_quant"] != "CommonUintActQuant":
+        input_quant = CommonIntActQuant
+    # prepare the quantization configuration of the model
+    config = dict(
+        first_layer_bit_width=config.get('first_layer_bit_width', None),
+        act_bit_width=config.get('act_bit_width', None),
+        input_quant=input_quant,
+        verbose=config.get('verbose', False),
+    )
+    # self.model = fold_bn_layers(self.model)
+    return quantize_model(
+        model, 
+        bit_width, 
+        fold_quant_input=False,
+        vision=True, 
+        **config
+    )
 
 
 def evaluate_model(

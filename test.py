@@ -24,7 +24,7 @@ def argument_parser():
     parser.add_argument("--batch_size", type=int, default=500)
     parser.add_argument("--num_models", type=int, default=-1)
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--seed", type=int, default=None)    
+    parser.add_argument("--seed", type=int, default=20000605)    
 
     return parser.parse_args()
 
@@ -83,9 +83,21 @@ def main():
     
     # ---------------------------------------------------------------------------- #
     #                                  BENCHMARKS                                  #
-    # ---------------------------------------------------------------------------- #        
+    # ---------------------------------------------------------------------------- #   
+    is_cifar = isinstance(data_module, dm.CIFAR10DataModule)
+    # --------------------------------- C-CIFAR-10 ------------------------------- #
+    if 'noise' in config['test'] and is_cifar:
+        data_path = config["test"]["noise"]["path"]
+        corruptions = config["test"]["noise"]["type"]
+        num_samples = config["test"]["noise"]["num_samples"]
+        for corruption in corruptions:
+            c_dataloader = data_module.corrupted_dataloader(data_path, corruption, num_samples)
+            for idx, model in enumerate(models, 1):
+                test_path = os.path.join(save_dir, f"{corruption}_{idx}.txt")
+                evaluate_model(trainer, model.to(device), c_dataloader, test_path)
+            
     # ------------------------------------ noise --------------------------------- #
-    if 'noise' in config['test']:
+    if 'noise' in config['test'] and not is_cifar:
         noise_cfg = config['test']['noise'] 
         for type in noise_cfg['type']:
             for percentage in noise_cfg['percentage']:
@@ -242,6 +254,22 @@ def main():
                 mc.save_on_file(save_dir)
         
     # ------------------------------------ plot ---------------------------------- #
+    if 'TDA' in config['test']:
+        cfg = config['test']['TDA']
+        lams = (cfg["min_lam"], cfg["max_lam"])
+        steps = cfg["steps"]
+        N = cfg["N"]
+        for idx, model in enumerate(models, 1):
+            plot = Surface(
+                model, 
+                model.criterion, 
+                data_module.test_dataloader(), 
+                device, seed=args.seed, 
+                name=f"plot_{steps}_{idx}"
+            )
+
+            plot.random_hyperplane(lams, steps, N)
+            
     if 'plot' in config['test']:
         cfg = config['test']['plot']
         lams = (cfg["min_lam"], cfg["max_lam"])
@@ -262,7 +290,8 @@ def main():
   
             plot.save_on_file(save_dir)
         
-        
+    
+    
     print("\nTest completed!")
 
 

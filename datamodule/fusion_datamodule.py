@@ -326,7 +326,7 @@ class FusionDataModule(pl.LightningDataModule):
             batch_size: int = 32, 
             val_size: float = 0.1,
             num_workers: int = 8, 
-            seed: int = 42,
+            seed: int = 20000605,
             noise_type: Optional[str] = None,
             noise_module: float = 0.0,
             standardize: bool = False,

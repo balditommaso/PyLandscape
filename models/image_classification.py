@@ -1,9 +1,12 @@
-import yaml
-import torch
-import torch.nn as nn
+
+"""
+Modified from: https://github.com/osmr/imgclsmob/blob/master/pytorch/pytorchcv/models
+"""
 import pytorch_lightning as pl
 from typing import Union
 from brevitas import config
+from torch import nn
+from torch.nn import Sequential
 from torch.optim import SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR, CosineAnnealingLR, OneCycleLR
 from torchmetrics import Accuracy
@@ -11,33 +14,130 @@ from .quantization import *
 from .utils import *
 from benchmarks.lipschitz import lipschitz_regularizer as lipReg
 from benchmarks.jacobian import JacobianReg as jReg
-
+from .utils import yaml_load
 
 config.IGNORE_MISSING_KEYS = True
 
 
-REPO_LINK = 'chenyaofo/pytorch-cifar-models'
+
+class DwsConvBlock(nn.Module):
+
+    def __init__(self, in_channels, out_channels, stride) -> nn.Module:
+        super(DwsConvBlock, self).__init__()
+        self.dw_conv = ConvBlock(
+            in_channels=in_channels,
+            out_channels=in_channels,
+            groups=in_channels,
+            kernel_size=3,
+            padding=1,
+            stride=stride,
+        )
+        self.pw_conv = ConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=1,
+            padding=0,
+        )
 
 
-def available_models():
-    return torch.hub.list(REPO_LINK, force_reload=True)
+    def forward(self, x):
+        x = self.dw_conv(x)
+        x = self.pw_conv(x)
+        return x
 
 
-def get_model(model:str, pretrained:bool = True) -> nn.Module:
-    """_summary_
 
-    Args:
-        model (str): name of the model as stored in the repo `chenyaofo/pytorch-cifar-models`
-        pretrained (bool, optional): Flag to download the trained parameters. Defaults to True.
+class ConvBlock(nn.Module):
 
-    Returns:
-        nn.Module: _description_
-    """
-    model = torch.hub.load(REPO_LINK, model, pretrained=pretrained)
-    if model.__class__.__name__ == 'RepVGG':
-        model.convert_to_inference_model()
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=1,
+            padding=0,
+            groups=1,
+            bn_eps=1e-5,
+        ) -> nn.Module:
+        super(ConvBlock, self).__init__()
+        self.conv = nn.Conv2d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            groups=groups,
+            bias=False
+        )
+        self.bn = nn.BatchNorm2d(num_features=out_channels, eps=bn_eps)
+        self.activation = nn.ReLU()
 
-    return model
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        x = self.activation(x)
+        return x
+
+
+
+class MobileNet(nn.Module):
+
+    def __init__(
+            self,
+            channels,
+            first_stage_stride,
+            first_layer_stride=2,
+            in_channels=3,
+            num_classes=10
+        ) -> nn.Module:
+        super(MobileNet, self).__init__()
+        init_block_channels = channels[0][0]
+
+        self.features = Sequential()
+        init_block = ConvBlock(
+            in_channels=in_channels,
+            out_channels=init_block_channels,
+            kernel_size=3,
+            stride=first_layer_stride
+        )
+        self.features.add_module('init_block', init_block)
+        in_channels = init_block_channels
+        for i, channels_per_stage in enumerate(channels[1:]):
+            stage = Sequential()
+            for j, out_channels in enumerate(channels_per_stage):
+                stride = 2 if (j == 0) and ((i != 0) or first_stage_stride) else 1
+                mod = DwsConvBlock(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    stride=stride,
+                )
+                stage.add_module('unit{}'.format(j + 1), mod)
+                in_channels = out_channels
+            self.features.add_module('stage{}'.format(i + 1), stage)
+        self.final_pool = nn.AdaptiveAvgPool2d(1)
+        self.flatten = nn.Flatten()
+        self.output = nn.Linear(in_channels, num_classes, bias=True)
+
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.final_pool(x)
+        x = self.flatten(x)
+        out = self.output(x)
+        return out
+
+
+
+def mobilenet_v1():
+
+    channels = [[32], [64], [128, 128], [256, 256], [512, 512], [1024]]
+    first_stage_stride = False
+
+    net = MobileNet(channels=channels, first_stage_stride=first_stage_stride)
+
+    return net
+
 
 
 class VisionModel(pl.LightningModule):
@@ -51,21 +151,20 @@ class VisionModel(pl.LightningModule):
         
         # load the config from yaml file
         if isinstance(config, str):
-            config = self.yaml_load(config)
+            config = yaml_load(config)
         
         self.learning_rate = learning_rate
+        if quantized: 
+            self.learning_rate *= 0.01
+            
         self.quantized = quantized
         self.save_hyperparameters()
+        self.bit_width = bit_width
+        self.model = mobilenet_v1()
         
-        # load the model from the repo
-        model_arch = config['model']['name']
-        pretrained = config['model']['pretrained']
-        
-        self.model = get_model(model_arch, pretrained=pretrained)
-        if self.quantized:
-            self.model = quantize_model(self.model, bit_width, **config['model']['quantization'])
-        
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss(
+            label_smoothing=config["fit"]["label_smoothing"]
+        )
         
         self.scheduler = config['fit']['lr_scheduler']
         # regularizers
@@ -85,12 +184,6 @@ class VisionModel(pl.LightningModule):
         self.val_top5_acc = Accuracy(task='multiclass', top_k=5, num_classes=config['data']['num_classes'])
         self.test_top1_acc = Accuracy(task='multiclass', top_k=1, num_classes=config['data']['num_classes'])
         self.test_top5_acc = Accuracy(task='multiclass', top_k=5, num_classes=config['data']['num_classes'])
-        
-        
-    def yaml_load(self, config):
-        with open(config) as stream:
-            param = yaml.safe_load(stream)
-        return param
     
     
     def configure_optimizers(self):
@@ -99,11 +192,11 @@ class VisionModel(pl.LightningModule):
                         weight_decay=self.l2)
         scheduler = None
         if self.scheduler == 'step':
-            scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+            scheduler = StepLR(optimizer, step_size=15, gamma=0.1)
         elif self.scheduler == 'plateau':
             scheduler = ReduceLROnPlateau(optimizer, mode='min')
         elif self.scheduler == 'cosine':
-            scheduler = CosineAnnealingLR(optimizer, T_max=3)
+            scheduler = CosineAnnealingLR(optimizer, T_max=200)
         elif self.scheduler == 'one_cycle':
             scheduler = OneCycleLR(optimizer, 
                                    max_lr=self.learning_rate,
@@ -179,6 +272,28 @@ class VisionModel(pl.LightningModule):
         self.log('test_top1_acc', self.test_top1_acc, prog_bar=True, sync_dist=True)
         self.log('test_top5_acc', self.test_top5_acc, sync_dist=True)
         
+    
+    def load_state_dict(self, state_dict, strict = True, assign = False):
+        # first, load the state_dict
+        is_quantized = self.hparams["bit_width"] < 32
+        needs_transformation = "model.features.init_block.bn.weight" in state_dict
+        # load full precision model 
+        if not is_quantized:
+            return super().load_state_dict(state_dict, strict)
+        # load quantized model
+        if is_quantized and needs_transformation:
+            super().load_state_dict(state_dict, strict)
+            config = self.hparams["config"]["model"]["quantization"]
+            self.model = fold_bn_layers(self.model)
+            self.model = apply_quantization(self.model, self.bit_width, config)
+        else:
+            config = self.hparams["config"]["model"]["quantization"]
+            self.model = fold_bn_layers(self.model)
+            self.model = apply_quantization(self.model, self.bit_width, config)
+            return super().load_state_dict(state_dict, strict)
+
+            
+
 
 
 

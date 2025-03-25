@@ -1,8 +1,12 @@
 import torch
 from typing import Dict, Optional
 from torch.nn import Module
+from typing import Dict, Optional
+
+import torch.types
+from collections import OrderedDict
 from .curve_converter import curved_model
-from .curve_module import CurveModule, Coeffs_t
+from .curve_module import Coeffs_t
 
 
 
@@ -16,7 +20,7 @@ class CurveNet(Module):
         architecture: Module, 
         num_bends: int = 3, 
         fix_start: bool = True, 
-        fix_end: bool = True
+        fix_end: bool = True,
     ) -> None:
         super(CurveNet, self).__init__()
         # prepare the masks for the bends
@@ -25,34 +29,21 @@ class CurveNet(Module):
         
         # instantiate the curve
         self.coeff_layer = curve(self.num_bends)
-        self.net = curved_model(architecture, fix_points=self.fix_points)
+        # init coeffs
+        coeffs_t = self.coeff_layer(0)
+        Coeffs_t.value = coeffs_t
+        # init the curved model
+        self.net = curved_model(architecture, self.fix_points)
         
-        # save a list with all the curved modules
-        self.curve_modules = []
-        for module in self.net.modules():
-            if issubclass(module.__class__, CurveModule):
-                self.curve_modules.append(module)
-    
-    
-    @staticmethod
-    def filter_weight_bias_parameters(
-        named_params: Dict[str, torch.tensor],
-        w_name: str = "weight",
-        b_name: str = "bias"
-    ) -> Dict[str, torch.nn.Parameter]:
-        """
-        Filters out parameters where the name does not contain 'weight' or 'bias'.
-        
-        Args:
-            named_params: An iterable of (name, parameter) pairs, e.g., model.named_parameters()
-            
-        Returns:
-            A dictionary containing only parameters where the name contains 'weight' or 'bias'.
-        """
-        filtered_params = {
-            name: param for name, param in filter(lambda x: w_name in x[0] or b_name in x[0], named_params)
-        }
-        return filtered_params
+
+    def _get_model_by_index(self, index: int) -> Dict[str, torch.nn.Parameter]:
+        res = OrderedDict()
+        for name, param in self.net.named_parameters():
+            value = name[-1]
+            if value.isdigit() and int(value) == index:
+                res[name] = param
+                
+        return res
      
 
     def import_base_parameters(self, base_model: Module, index: int) -> None:
@@ -60,21 +51,10 @@ class CurveNet(Module):
         Import the parameters into a specific band.
         """
         assert index in range(self.num_bends), "Index out of bound!"
-        
-        target_parameters = self.filter_weight_bias_parameters(
-            self.net.named_parameters(), 
-            f"weight_{index}", 
-            f"bias_{index}"
-        )
-        base_parameters = self.filter_weight_bias_parameters(base_model.named_parameters())
-        assert len(target_parameters) == len(base_parameters), "Models must have the same number of layer"
-        param_dict = {}
-        for name, param in target_parameters.items():
-            param_dict[name[:-2]] = {'param': param}
-        for name, param in base_parameters.items():
-            param_dict[name]['base_param'] = param
-        for _, param_obj in param_dict.items():
-            param_obj['param'].data.copy_(param_obj['base_param'].data)
+        target_parameters =self._get_model_by_index(index)
+        assert len(target_parameters) == len(list(base_model.parameters())), "Models must have the same number of layer"
+        for (name, target_param), base_param in zip(target_parameters.items(), base_model.parameters()):
+            target_param.data = base_param.data
 
 
     def init_linear(self) -> None:
@@ -82,14 +62,10 @@ class CurveNet(Module):
         Initialize the intermediate model in the line with the linear interpolation
         between the start and the end.
         """
-        filtered_param = self.filter_weight_bias_parameters(
-            self.net.named_parameters(), 
-            "weight_", 
-            "bias_"
-        )
+        filtered_params = {name: param for name, param in self.net.named_parameters() if name[-1].isdigit()}
         band_dict = {}
         # build the list of version per layer
-        for name, param in filtered_param.items():
+        for name, param in filtered_params.items():
             name, band = name.rsplit("_", 1)
             if name not in band_dict:
                 band_dict[name] = [None] * self.num_bends

@@ -49,7 +49,7 @@ class AutoEncoderDataModule(pl.LightningDataModule):
             num_workers: int = 8, 
             noise_type: Optional[str] = None,
             noise_module: float = 0.0,
-            seed: int = 42,
+            seed: int = 20000605,
             **kwargs) -> None:
         super().__init__()
         self.raw_data = data_path
@@ -184,9 +184,11 @@ class AutoEncoderDataModule(pl.LightningDataModule):
         
         # calculate the number of samples for each set
         self.train_dataset, self.val_dataset, self.test_dataset = \
-                                        random_split(dataset, 
-                                        [self.train_size, self.validation_size, self.test_size],
-                                        torch.Generator().manual_seed(self.seed))
+                        random_split(
+                            dataset, 
+                            [self.train_size, self.validation_size, self.test_size],
+                            torch.Generator().manual_seed(self.seed)
+                        )
         self.test_indices = self.test_dataset.indices
         
 

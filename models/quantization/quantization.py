@@ -47,6 +47,7 @@ def quantize_model(
     first_layer_bit_width: Optional[int] = None,
     act_bit_width: Optional[int] = None,
     input_quant: ActQuantType = CommonIntActQuant,
+    vision: bool = False,
     fold_quant_input: bool = True,
     verbose: bool = True
 ) -> nn.Module:
@@ -73,6 +74,7 @@ def quantize_model(
         q_module.update(q_model._modules)
         q_model = nn.Sequential(q_module)
     
+    prev_module = None
     # iterate over the module of the model and convert them to the quantized version
     for name, module in model.named_modules():
         
@@ -96,6 +98,7 @@ def quantize_model(
                 module.in_channels, 
                 module.out_channels, 
                 module.kernel_size,
+                groups=module.groups,
                 stride=module.stride,
                 padding=module.padding,
                 bias=module.bias is not None,
@@ -136,10 +139,24 @@ def quantize_model(
         #                                  Activations                                 #
         # ---------------------------------------------------------------------------- #
         elif isinstance(module, nn.ReLU):
+            act_config = {}
+            # special activation config for mobilenet
+            if vision:
+                out_channels = prev_module.out_channels
+                scaling_per_output_channels = True
+                if "dw_conv" in name or "stage5" in name:
+                    scaling_per_output_channels = False
+                act_config = {
+                    "per_channel_broadcastable_shape": (1, out_channels, 1, 1),
+                    "scaling_stats_permute_dims": (1, 0, 2, 3),
+                    "scaling_per_output_channel": scaling_per_output_channels,
+                }
+                
             q_module = qnn.QuantReLU(
                 act_quant=CommonUintActQuant,
                 bit_width=act_bit_width,
-                return_quant_tensor=True
+                return_quant_tensor=True,
+                **act_config
             )
         elif isinstance(module, nn.Sigmoid):
             q_module = qnn.QuantSigmoid(
@@ -171,7 +188,7 @@ def quantize_model(
             if verbose:
                 print(f"{module.__class__.__name__}:\t\t\tnot quantized")
             continue
-        
+        prev_module = module
         # load the parameters from the full precision version
         state_dict = module.state_dict()
         q_module.load_state_dict(state_dict)

@@ -59,7 +59,6 @@ class ModeConnectivity(Metric):
             init_linear=init_linear,
             device=device
         )
-        
         # train and shape the bezier curve
         interpolate.train_curve(train_dataloader, max_epochs)
         

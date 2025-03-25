@@ -1,30 +1,30 @@
-save_dir: 'ECON'
+save_dir: 'MobileNet'
 
 # dataset config
 data:
-  name: AutoEncoderDataModule
-  data_path: ./data/ECON/
+  name: CIFAR10DataModule
+  data_path: ./data/VISION/
   num_workers: 1
-  train_size: 0.8
   val_size: 0.1
-  test_size: 0.1
+  num_classes: 10
 
 
 model:
-  name: AutoEncoder
+  name: VisionModel
   size: 'baseline'
   quantization:
     verbose: 0
-    input_quant: CommonUintActQuant
+    input_quant: CommonIntActQuant
     
 
 fit:
   # learning rate scheduler
-  lr_scheduler: none
+  lr_scheduler: cosine
+  label_smoothing: 0.1
   # regularization during training
   regularizer:
     l1: 0.0
-    l2: 0.0
+    l2: 0.0005
     jacobian: 0.0
     parseval: 0.0
   
@@ -43,22 +43,18 @@ fit:
     auto_insert_metric_name: 0
   # PL trainer config
   trainer:
-    max_epochs: 200
+    max_epochs: 20
     accelerator: gpu
-    strategy: ddp
+    # strategy: ddp
 
 
 test:
   noise:
+    path: ./data/VISION/CIFAR-10-C/CIFAR-10-C
+    num_samples: 10000
     type:
-      - gaussian
-      - salt_pepper
-    percentage:
-      - 5
-      - 10
-      - 15
-      - 20
-      - 50
+      - gaussian_noise
+      - impulse_noise
   bit_flip:
     n_bits:
       - 1
@@ -68,23 +64,26 @@ test:
     strategy:
       - fkeras
       - random
-  plot:
-    min_lam: -0.15
-    max_lam: 0.15
-    steps: 200
-  mode_connectivity:
-    curve: Bezier
-    num_bends: 3
-    num_points: 60
-    max_epochs: 100
-  cka:
-    batch_size: 10
-    num_outputs: 
-      - 5
-      # - 10
-    num_runs: 1
-  hessian:
-    n_iter: 100
-    top_n: 1
+  # plot:
+  #   min_lam: -0.15
+  #   max_lam: 0.15
+  #   steps: 200
+  # mode_connectivity:
+  #   curve: Bezier
+  #   num_bends: 3
+  #   num_points: 60
+  #   max_epochs: 100
+  # TDA:
+  #   N: 1
+  #   min_lam: -0.15
+  #   max_lam: 0.15
+  #   steps: 10
+#   cka:
+#     batch_size: 10
+#     num_outputs: 5
+#     num_runs: 1
+#   hessian:
+#     n_iter: 100
+#     top_n: 1
 
 

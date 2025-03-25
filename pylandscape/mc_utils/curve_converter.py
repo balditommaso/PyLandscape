@@ -4,7 +4,10 @@ from copy import deepcopy
 from torch import nn
 from torch.nn import Module
 from typing import List
-from .curve_module import Conv2d, Linear, ConvTranspose2D
+from brevitas.nn.quant_layer import QuantNonLinearActLayer
+from warnings import warn
+from .curve_module import Conv2d, Linear, ConvTranspose2D, QuantLinear, QuantConv2d, QuantNLAL
+
 
 
 def rgetattr(obj, attr, *args):
@@ -36,13 +39,24 @@ def curved_model(model: Module, fix_points: List[bool]) -> Module:
     for name, module in model.named_modules():
         module = deepcopy(module)
         curve_module = None
-        if isinstance(module, nn.Conv2d) or isinstance(module, qnn.QuantConv2d):
-            curve_module = Conv2d(module, fix_points)
+        
+        # quantized
+        if isinstance(module, qnn.QuantConv2d) and hasattr(module, "quant_weight"):
+            curve_module = QuantConv2d(module, fix_points)
+        elif isinstance(module, qnn.QuantLinear) and hasattr(module, "quant_weight"):
+            curve_module = QuantLinear(module, fix_points)
+        elif isinstance(module, QuantNonLinearActLayer):
+            curve_module = QuantNLAL(module, fix_points)
+        # full precision
         elif isinstance(module, nn.ConvTranspose2d):
             curve_module = ConvTranspose2D(module, fix_points)
-        elif isinstance(module, nn.Linear) or isinstance(module, qnn.QuantLinear):
+        elif isinstance(module, nn.Linear):
             curve_module = Linear(module, fix_points)
+        elif isinstance(module, nn.Conv2d):
+            curve_module = Conv2d(module, fix_points)
+        # TODO: add quantized activations
         else:
+            warn(f"Layer not converted! ({name})")
             continue
         
         rsetattr(curve_model, name, curve_module)

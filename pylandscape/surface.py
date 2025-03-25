@@ -1,13 +1,14 @@
 import torch
+import numpy as np
+import pyhessian
 from torch import nn, tensor
 from copy import deepcopy
 from torch.types import _device
 from torch.utils.data import DataLoader
 from .metric import Metric
 from collections import OrderedDict 
-from typing import Optional, List, Dict, Tuple
-import numpy as np
-import pyhessian
+from typing import Optional, List, Dict, Tuple, Sequence
+
 
 
 class Surface(Metric):
@@ -17,7 +18,7 @@ class Surface(Metric):
         criterion: nn.Module,
         dataloader: DataLoader,
         device: _device = "cpu", 
-        seed: Optional[int] = None, 
+        seed: Optional[int] = 20000605, 
         name: str = "plot"
     ) -> None:
         super().__init__(name)
@@ -45,45 +46,33 @@ class Surface(Metric):
     
     
     @staticmethod
-    def get_params(
-        model: nn.Module, 
-        direction1: tensor, 
-        alpha: float,
-        direction2: Optional[tensor] = None,
-        beta: Optional[float] = None
-    ) -> nn.Module:
+    def get_params(model: nn.Module, directions: List[tensor], step_values: List[float]) -> nn.Module:
         """
-        Generate a new model perturbing the parameters in the specified directions with a 
-        certain magnitude.
+        Generate a new model by perturbing its parameters along multiple directions.
 
         Args:
             model (nn.Module): Original target model.
-            direction1 (tensor): First direction of the perturbation.
-            alpha (float): Magnitude of the perturbation on direction1. 
-            direction2 (Optional[tensor], optional): Second direction of the perturbation. Defaults to None.
-            beta (Optional[float], optional): Magnitude of the perturbation on direction2. Defaults to None.
+            directions (List[torch.Tensor]): List of N direction tensors for perturbation.
+            step_values (List[float]): List of N magnitudes for perturbations.
 
         Returns:
-            nn.Module: model shifted in the loss landscape.
+            nn.Module: Model shifted in the loss landscape.
         """
+        assert len(directions) == len(step_values), "Number of directions and step values must match!"
+        
         perturbed_model = deepcopy(model)
         
-        if direction2 is None or beta is None:
-            # single line (2D)
-            for (name, module), perturbed_module, d in zip(model.named_parameters(), perturbed_model.parameters(), direction1):
-                assert d.shape == module.data.shape and module.data.shape == perturbed_module.data.shape, \
-                    f"Tensor mismatch while adding perturbation! ({name})"
-                        
-                perturbed_module.data = module.data + alpha * d
-        else:
-            # surface (3D)
-            for (name, module), perturbed_module, d1, d2 in zip(model.named_parameters(), perturbed_model.parameters(), direction1, direction2):
-                assert d1.shape == module.data.shape and module.data.shape == perturbed_module.data.shape and \
-                       d2.shape == module.data.shape and module.data.shape == perturbed_module.data.shape, \
-                    f"Tensor mismatch while adding perturbation! ({name})"
+        # iterate over model parameters and apply perturbations in that direction
+        for (name, module), perturbed_module, *dir_vect in zip(
+            model.named_parameters(), perturbed_model.parameters(), *directions
+        ):
+            assert all(d.shape == module.data.shape for d in dir_vect), \
+                f"Tensor mismatch while adding perturbation! ({name})"
                 
-                perturbed_module.data = module.data + alpha * d1 + beta * d2
-                    
+            # apply perturbation
+            perturbation = sum(step * d for step, d in zip(step_values, dir_vect))
+            perturbed_module.data = module.data + perturbation
+
         return perturbed_model
     
     
@@ -153,25 +142,19 @@ class Surface(Metric):
             if torch.abs(dot_product) > tol:
                 return False
         return True
-        
-    
-    def _compute_line(self, v: List[tensor], steps: List[float]) -> List[float]:
-        losses = []
-        for step in steps:
-            perturbed_model = self.get_params(self.model, v, step).to(self.device)
-            losses.append(self.criterion(perturbed_model(self.inputs), self.targets).item())
-        
-        return losses
     
     
-    def _compute_surface(self, v1: List[tensor], v2: List[tensor], steps: List[float]) -> List[float]:
-        loss_surface = np.zeros((len(steps), len(steps)))
-        # compute the loss in the mesh of points
-        for i, step1 in enumerate(steps):
-            for j, step2 in enumerate(steps):
-                perturbed_model = self.get_params(self.model, v1, step1, v2, step2)
-                loss_surface[i, j] = self.criterion(perturbed_model(self.inputs), self.targets).item()
-                
+    
+    def _compute_hyperplane(self, v: List[List[tensor]], steps: List[float]) -> np.ndarray:
+        N = len(v)
+        shape = (len(steps),) * N
+        loss_surface = np.zeros(shape)
+        for indices in np.ndindex(shape):
+            step_values = [steps[idx] for idx in indices]
+            perturbed_model = self.get_params(self.model, v, step_values)
+            # Compute and store loss
+            loss_surface[indices] = self.criterion(perturbed_model(self.inputs), self.targets).item()
+
         return loss_surface
     
     
@@ -195,8 +178,8 @@ class Surface(Metric):
         min_lam, max_lam = lams
         lams = np.linspace(min_lam, max_lam, steps).astype(np.float32)
         
-        # compute the loss along the line        
-        loss_list = self._compute_line(v, lams)
+        # compute the loss along the line      
+        loss_list = self._compute_hyperplane([v], lams)  
             
         self.results["random_line"] = {"alpha": lams, "loss": loss_list}
         return lams, loss_list
@@ -229,7 +212,7 @@ class Surface(Metric):
         min_lam, max_lam = lams
         lams = np.linspace(min_lam, max_lam, steps).astype(np.float32)
         
-        loss_surface = self._compute_surface(v1, v2, lams)
+        loss_surface = self._compute_hyperplane([v1, v2], lams)
         
         self.results["random_plane"] = {"alpha": lams, "beta": lams, "loss": loss_surface}
         return lams, lams, loss_surface
@@ -263,7 +246,7 @@ class Surface(Metric):
         min_lam, max_lam = lams
         lams = np.linspace(min_lam, max_lam, steps).astype(np.float32)
         
-        loss_list = self._compute_line(top_eigenvector[0], lams)
+        loss_list = self._compute_hyperplane(top_eigenvector, lams)
         
         self.results["hessian_line"] = {"alpha": lams, "loss": loss_list}
         return lams, loss_list
@@ -297,11 +280,54 @@ class Surface(Metric):
         min_lam, max_lam = lams
         lams = np.linspace(min_lam, max_lam, steps).astype(np.float32)
         
-        loss_surface = self._compute_surface(top_eigenvector[0], top_eigenvector[1], lams)        
+        loss_surface = self._compute_hyperplane(top_eigenvector, lams)
         
         self.results["hessian_plane"] = {"alpha": lams, "beta": lams, "loss": loss_surface}
         return lams, lams, loss_surface
-
+    
+    
+    def hessian_hyperplane(
+        self,
+        lams: Tuple[float, float],
+        steps: int,
+        n: int,
+        max_iter: int = 100
+    ) -> Sequence[np.ndarray]:
+        # get the top n eigenvectors
+        hessian_comp = pyhessian.hessian(self.model, 
+                                         self.criterion, 
+                                         dataloader=self.dataloader, 
+                                         cuda=self.device.type == "cuda")
+        _, top_eigenvector = hessian_comp.eigenvalues(maxIter=max_iter, tol=1e-5, top_n=n)
+        
+        # coefficients to perturb the model
+        min_lam, max_lam = lams
+        lams = np.linspace(min_lam, max_lam, steps).astype(np.float32)
+        
+        loss_hyperplane = self._compute_hyperplane(top_eigenvector, lams)
     
 
+    def random_hyperplane(
+        self,
+        lams: Tuple[float, float],
+        steps: int,
+        n: int
+    ) -> Sequence[np.ndarray]:
+        
+        # generate the first random vector
+        v1 = Surface._rand_like(self.model.parameters())
+        v1 = pyhessian.utils.normalization(v1)
+        directions = [v1]
+        for _ in range(n-1):
+            v = self._rand_like(v1)
+            v = self.orthogonalize_vectors(v, directions[-1])
+            v = pyhessian.utils.normalization(v)
+            directions.append(v)
+                
+        # coefficients to perturb the model
+        min_lam, max_lam = lams
+        lams = np.linspace(min_lam, max_lam, steps).astype(np.float32)
+        
+        loss_surface = self._compute_hyperplane(directions, lams)
+        
         

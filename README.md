@@ -35,9 +35,8 @@ pip install -r requirements.txt
 You can download the dataset for the ECON-T model
 
 ```
-wget -P ./data/ECON/ https://retis.santannapisa.it/~tbaldi/hgcal_dataset/hgcal22data_signal_driven_ttbar_v11.tar.gz 
-tar -xvf ./data/ECON/hgcal22data_signal_driven_ttbar_v11.tar.gz -C ./data/ECON
-mv ./data/ECON/hgcal22data_signal_driven_ttbar_v11/nElinks_5/*.csv ./data/ECON/
+wget -P ./data/ECON/ https://retis.santannapisa.it/~tbaldi/hgcal_dataset/Elegun-20241029T091808Z-001.zip
+unzip Elegun-20241029T091808Z-001.zip -d ./data/ECON
 ```
 
 ### Download the Fusion dataset

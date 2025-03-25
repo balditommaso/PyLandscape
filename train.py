@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.profilers import PyTorchProfiler
 import datamodule as dm
 import models
 from models.utils import *
