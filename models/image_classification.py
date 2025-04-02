@@ -50,15 +50,15 @@ class DwsConvBlock(nn.Module):
 class ConvBlock(nn.Module):
 
     def __init__(
-            self,
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride=1,
-            padding=0,
-            groups=1,
-            bn_eps=1e-5,
-        ) -> nn.Module:
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        groups=1,
+        bn_eps=1e-5,
+    ) -> nn.Module:
         super(ConvBlock, self).__init__()
         self.conv = nn.Conv2d(
             in_channels=in_channels,
@@ -84,13 +84,13 @@ class ConvBlock(nn.Module):
 class MobileNet(nn.Module):
 
     def __init__(
-            self,
-            channels,
-            first_stage_stride,
-            first_layer_stride=2,
-            in_channels=3,
-            num_classes=10
-        ) -> nn.Module:
+        self,
+        channels,
+        first_stage_stride,
+        first_layer_stride=2,
+        in_channels=3,
+        num_classes=10
+    ) -> nn.Module:
         super(MobileNet, self).__init__()
         init_block_channels = channels[0][0]
 
@@ -142,11 +142,12 @@ def mobilenet_v1():
 
 class VisionModel(pl.LightningModule):
     def __init__(self,
-            config: Union[str, dict],
-            quantized: bool, 
-            learning_rate: float,
-            bit_width: int=32,
-            *args, **kwargs) -> None:
+        config: Union[str, dict],
+        quantized: bool, 
+        learning_rate: float,
+        bit_width: int=32,
+        *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         
         # load the config from yaml file

@@ -130,11 +130,13 @@ def main():
     # ---------------------------------- bit-flip -------------------------------- #
     if 'bit_flip' in config['test']:
         cfg = config['test']['bit_flip']
+        num_bits = make_iterable(cfg["n_bits"])
         for idx, model in enumerate(models, 1):
             bit_flip = BitFlip(model, data_module.test_dataloader(), device)
             for strategy in cfg['strategy']:
-                for n_bits in cfg['n_bits']:
-                    perturbed_model = bit_flip.attack(n_bits, strategy)
+                perturbed_models = bit_flip.attack(num_bits, strategy)
+                for perturbed_model, n_bits in zip(perturbed_models, num_bits):
+                    # evaluate the bit flipped models
                     test_path = os.path.join(
                         save_dir, 
                         f"{strategy}_bit_flip_{n_bits}_{idx}.txt"

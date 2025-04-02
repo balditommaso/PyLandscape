@@ -1,6 +1,7 @@
 from copy import deepcopy
 import torch
 import torch.nn as nn
+from typing import List
 from torch.utils.data import DataLoader
 from torch.types import _device
 from pylandscape import Hessian
@@ -118,7 +119,7 @@ class BitFlip:
         return flipped_value
                         
         
-    def attack(self, num: int, strategy: str) -> nn.Module:
+    def attack(self, num_bits: List[int], strategy: str) -> List[nn.Module]:
         """
         Method used to flip a certain number of bits in the target layers of a neural network.
 
@@ -132,9 +133,6 @@ class BitFlip:
         Returns:
             nn.Module: Model with the bits flipped.
         """
-        assert num >= 0, "The number of bit to flip cannot be negative!"
-        
-        # get the indices if necessary
         if strategy == "random":
             self.indices = torch.randint(0, self.num_bits, size=(self.num_bits,)).tolist()
         elif strategy == "fkeras":
@@ -143,47 +141,47 @@ class BitFlip:
             self.indices = self.from_param_ranking_to_bit_ranking(param_ranking)
         else:
             raise ValueError(f"Not valid strategy: {strategy}")
-        
-        # copy the model
-        perturbed_model = deepcopy(self.model)
-        
+
+        models = []
         # flip the bits
-        for index in self.indices[:num]:
-            acc = 0
-            for name, layer in perturbed_model.named_modules():
-                # looking for quantized layer only
-                if hasattr(layer, "quant_weight"):
-                    bit_width = self.quant_info[name]["bit_width"]
-                    weight_index = int(index // bit_width)
-                    bit_index = int(index % bit_width)
-                    
-                    if weight_index < self.quant_info[name]["num_params"] + acc:
-                        weight_index -= acc # align the index to the layer
-                        weight = layer.quant_weight().int().reshape(-1)[weight_index]
-                        if layer.quant_weight().signed:
-                            # flip a bit in the signed integer
-                            flipped_value = BitFlip.integer_signed_bitflip(weight, bit_width, bit_index)
-                        else:
-                            # flip a bit in the unsigned integer
-                            flipped_value = BitFlip.integer_unsigned_bitflip(weight, bit_width, bit_index)
+        for num in num_bits:
+            assert num >= 0, "The number of bit to flip cannot be negative!"
+            perturbed_model = deepcopy(self.model)
+            for index in self.indices[:num]:
+                acc = 0
+                for name, layer in perturbed_model.named_modules():
+                    # looking for quantized layer only
+                    if hasattr(layer, "quant_weight"):
+                        bit_width = self.quant_info[name]["bit_width"]
+                        weight_index = int(index // bit_width)
+                        bit_index = int(index % bit_width)
                         
-                        # handling layer-wise and channel-wise quantization
-                        scale = layer.quant_weight().scale
-                        if scale.numel() > 1:
-                            scale = scale[weight_index // (layer.kernel_size[0]*layer.kernel_size[1]*layer.in_channels)]
-                        zero_point = layer.quant_weight().zero_point
-                        if zero_point.numel() > 1:
-                            zero_point = zero_point[weight_index // (layer.kernel_size[0]*layer.kernel_size[1])]
+                        if weight_index < self.quant_info[name]["num_params"] + acc:
+                            weight_index -= acc # align the index to the layer
+                            weight = layer.quant_weight().int().reshape(-1)[weight_index]
+                            if layer.quant_weight().signed:
+                                # flip a bit in the signed integer
+                                flipped_value = BitFlip.integer_signed_bitflip(weight, bit_width, bit_index)
+                            else:
+                                # flip a bit in the unsigned integer
+                                flipped_value = BitFlip.integer_unsigned_bitflip(weight, bit_width, bit_index)
                             
-                        # apply the bit-flip
-                        with torch.no_grad():
-                            flipped_weight = BitFlip.dequantize(flipped_value, scale, zero_point)
-                            layer.weight.reshape(-1)[weight_index] = flipped_weight
-                        
-                        break
-                    else:
-                        acc += self.quant_info[name]["num_params"]
-                    
-        return perturbed_model
+                            # handling layer-wise and channel-wise quantization
+                            scale = layer.quant_weight().scale
+                            if scale.numel() > 1:
+                                scale = scale[weight_index // (layer.kernel_size[0]*layer.kernel_size[1]*layer.in_channels)]
+                            zero_point = layer.quant_weight().zero_point
+                            if zero_point.numel() > 1:
+                                zero_point = zero_point[weight_index // (layer.kernel_size[0]*layer.kernel_size[1])]
+                                
+                            # apply the bit-flip
+                            with torch.no_grad():
+                                flipped_weight = BitFlip.dequantize(flipped_value, scale, zero_point)
+                                layer.weight.reshape(-1)[weight_index] = flipped_weight
+                            break
+                        else:
+                            acc += self.quant_info[name]["num_params"]
+            models.append(perturbed_model)
+        return models
 
 

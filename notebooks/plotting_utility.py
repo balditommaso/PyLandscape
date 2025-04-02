@@ -10,35 +10,46 @@ from typing import Optional, Tuple, List
 #                                   CONSTANT                                   #
 # ---------------------------------------------------------------------------- #
 DATA_PATH = '../checkpoint/'
-batch_sizes = [1024]
-learning_rates = [0.0015625]
+
 precisions = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-noise_tags = ["gaussian", "salt_pepper"]
+econ_noise_tags = ["gaussian", "salt_pepper"]
+vision_noise_tags = ["gaussian", "impulse"]
 flip_strategy = ["random_bit_flip", "fkeras_bit_flip"]
 
+# plot styling
 FIG_SIZE = (7, 5)
 LINE_WIDTH = 2
 LEGEND_SIZE = 14
 LABEL_SIZE = 20
 TICK_SIZE = 18
 
-
 labels = {
     "JREG_0.1": "Jacobian (δ=1e-1)",
-    "LIP_0.00001": "Orthogonality (δ=1e-5)",
     "JREG_0.01": "Jacobian (δ=1e-2)",
-    "LIP_0.0001": "Orthogonality (δ=1e-4)",
     "JREG_0.001": "Jacobian (δ=1e-3)",
+    "JREG_0.0001": "Jacobian (δ=1e-4)",
+    "JREG_0.00001": "Jacobian (δ=1e-5)",
+    "JREG_0.000001": "Jacobian (δ=1e-6)",
+    "JREG_0.0000001": "Jacobian (δ=1e-7)",
+
+    "LIP_0.1": "Orthogonality (δ=1e-1)",
+    "LIP_0.01": "Orthogonality (δ=1e-2)",
+    "LIP_0.001": "Orthogonality (δ=1e-3)",
+    "LIP_0.0001": "Orthogonality (δ=1e-4)",
+    "LIP_0.00001": "Orthogonality (δ=1e-5)",
     "LIP_0.000001": "Orthogonality (δ=1e-6)",
+    "LIP_0.0000001": "Orthogonality (δ=1e-7)",
+
     "baseline": "Baseline"
 }
 
 # ---------------------------------------------------------------------------- #
 #                                   PLOTTING                                   #
 # ---------------------------------------------------------------------------- #
-def plot_precision_vs_emd(
+def plot_precision_vs_performace(
     values: pd.DataFrame, 
     group_by: str, 
+    performance_tag: str = "AVG_EMD",
     std: bool = False, 
     log_scale: bool = False, 
     plot_legend: bool = False,
@@ -49,14 +60,14 @@ def plot_precision_vs_emd(
     # Group data and plot each group with mean and std shading
     for label, df_group in values.groupby(group_by):
         # Plot mean line for the group
-        plt.plot(df_group["precision"], df_group["EMD"], marker='o', linewidth=LINE_WIDTH, label=label)
+        plt.plot(df_group["precision"], df_group[performance_tag], marker='o', linewidth=LINE_WIDTH, label=label)
         
         # Plot shaded area for standard deviation
         if std:
             plt.fill_between(
                 df_group["precision"],
-                df_group["EMD"] - df_group["EMD std"],
-                df_group["EMD"] + df_group["EMD std"],
+                df_group[performance_tag] - df_group[f"{performance_tag} std"],
+                df_group[performance_tag] + df_group[f"{performance_tag} std"],
                 alpha=0.2  # Adjust transparency as needed
             )
     if log_scale:
@@ -66,7 +77,7 @@ def plot_precision_vs_emd(
     
     plt.tick_params(axis='both', which='major', labelsize=TICK_SIZE) 
     plt.xlabel("Precision", fontsize=LABEL_SIZE)
-    plt.ylabel("EMD", fontsize=LABEL_SIZE)
+    plt.ylabel(performance_tag.replace("_", " "), fontsize=LABEL_SIZE)
 
     # plt.title(title, fontsize=16)
     if plot_legend:
@@ -131,32 +142,51 @@ def load_from_pickle(dir_path: str, file: str):
             return pickle.load(f)
 
 
-def get_econ_results(
+def get_results(
     path: str, 
     tag: str = "accuracy", 
-    aggregate: str = "mean",
+    aggregate: str = "mean", 
+    key: str = "test_top1_acc",  # Default for vision results
     verbose: bool = False
 ) -> np.ndarray:
+    """
+    Generalized function to retrieve and aggregate results from files in a directory.
+
+    Args:
+        path (str): Directory containing result files.
+        tag (str): Keyword to filter relevant files.
+        aggregate (str): Aggregation method (e.g., "mean", "median").
+        key (str): Key to extract data from the file.
+        verbose (bool): If True, prints messages when errors occur.
+
+    Returns:
+        np.ndarray: Aggregated results or NaN if no results are found.
+    """
+    
     if os.path.exists(path) and os.path.isdir(path):
         files = os.listdir(path)
         result_files = [file for file in files if tag in file]
-        results = []    
+        results = []
+
         for file in result_files:
             with open(os.path.join(path, file)) as f:
                 file_txt = f.read()
                 data = ast.literal_eval(file_txt)
-                data = data[0]['AVG_EMD']
-                results.append(data)  
+                if isinstance(data, list) and len(data) > 0 and key in data[0]:
+                    results.append(data[0][key])
+                else:
+                    if verbose:
+                        print(f"Key '{key}' not found in file: {file}")
     else:
         if verbose:
             print(f"Directory not found!\n\tpath: {path}")
-        return np.NaN     
-     
-    if len(results) == 0:
+        return np.NaN  
+
+    if not results:
         if verbose:
             print(f"Results not found!\n\tpath: {path}/{result_files}\n\ttag: {tag}")
         return np.NaN
-    
+
     return getattr(np, aggregate)(results)
 
 
@@ -194,12 +224,24 @@ def get_metrics_results(dir_path: str, file_tag: str, key: str, aggregate: str =
         print(f"Directory not found!\n\tpath: {dir_path}")
         return np.NaN
 
+
+
 def create_dir(path: str) -> None:
     if not os.path.exists(path):
         os.makedirs(path)
 
+    
 
-def load_econ_performance(tags: List[str], noise_modules: List[str], verbose: bool = False) -> None:
+def load_metrics(
+    model_type: str,
+    tags: List[str],
+    batch_sizes: List[int] = None,
+    learning_rates: List[float] = None,
+    verbose: bool = False
+) -> None:
+        # Default parameters based on model type
+    batch_sizes = batch_sizes or ([1024] if model_type == "econ" else [256])
+    learning_rates = learning_rates or ([0.0015625] if model_type == "econ" else [0.1])
     # store the results
     records = []
     for p in precisions:
@@ -207,105 +249,13 @@ def load_econ_performance(tags: List[str], noise_modules: List[str], verbose: bo
             for y, lr in enumerate(learning_rates):
                 for tag in tags:
                     # build the path
-                    path = os.path.join(DATA_PATH, f"bs{bs}_lr{lr}/ECON_{p}b")
+                    base_path = f"bs{bs}_lr{lr}/"
+                    model_prefix = "ECON" if "econ" in model_type else "MobileNet"
+                    path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{p}b")
+
                     if tag != "baseline":
-                        path = os.path.join(DATA_PATH, f"bs{bs}_lr{lr}/ECON_{tag}_{p}b")
-                    
-                    records.append({
-                        "batch_size": bs,
-                        "learning_rate": lr,
-                        "precision": p,
-                        "regularizer": labels[tag],
-                        "noise_type": "clean",
-                        "Noise module (%)": 0,
-                        "EMD": get_econ_results(path, aggregate="mean", verbose=verbose),
-                        "EMD std": get_econ_results(path, aggregate="std", verbose=verbose),
-                        "max EMD": get_econ_results(path, aggregate="max", verbose=verbose),
-                        "min EMD": get_econ_results(path, aggregate="min", verbose=verbose),
-                    })
-                    
-                    for noise_tag in noise_tags:
-                        for module in noise_modules:
-                            records.append({
-                                "batch_size": bs,
-                                "learning_rate": lr,
-                                "precision": p,
-                                "regularizer": labels[tag],
-                                "noise_type": noise_tag,
-                                "Noise module (%)": module,
-                                "EMD": get_econ_results(path, f"{noise_tag}_{module}", aggregate="mean", verbose=verbose),
-                                "EMD std": get_econ_results(path, f"{noise_tag}_{module}", aggregate="std", verbose=verbose),
-                                "max EMD": get_econ_results(path, f"{noise_tag}_{module}", aggregate="max", verbose=verbose),
-                                "min EMD": get_econ_results(path, f"{noise_tag}_{module}", aggregate="min", verbose=verbose),
-                            })
-                    
+                        path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{tag}_{p}b")
 
-    df = pd.DataFrame(records)
-    create_dir("./results/econ")
-    df.to_csv("./results/econ/noise.csv", index=False)
-    
-
-def load_econ_bit_flip(tags: List[str], num_bits: List[int]) -> None:
-    # store the results
-    records = []
-    for p in precisions:
-        for x, bs in enumerate(batch_sizes):
-            for y, lr in enumerate(learning_rates):
-                for tag in tags:
-                    # build the path
-                    path = os.path.join(DATA_PATH, f"bs{bs}_lr{lr}/ECON_{p}b")
-                    if tag != "baseline":
-                        path = os.path.join(DATA_PATH, f"bs{bs}_lr{lr}/ECON_{tag}_{p}b")
-                    
-                    records.append({
-                        "batch_size": bs,
-                        "learning_rate": lr,
-                        "precision": p,
-                        "regularizer": labels[tag],
-                        "flip_strategy": "clean",
-                        "# bits flipped": 0,
-                        "EMD": get_econ_results(path, aggregate="mean"),
-                        "EMD std": get_econ_results(path, aggregate="std"),
-                        "min EMD": get_econ_results(path, aggregate="min"),
-                        "max EMD": get_econ_results(path, aggregate="max"),
-                    })
-                    
-                    for strategy in flip_strategy:
-                        for bit in num_bits:
-                            
-                            records.append({
-                                "batch_size": bs,
-                                "learning_rate": lr,
-                                "precision": p,
-                                "regularizer": labels[tag],
-                                "flip_strategy": strategy,
-                                "# bits flipped": bit,
-                                "EMD": get_econ_results(path, f"{strategy}_{bit}", aggregate="mean"),
-                                "EMD std": get_econ_results(path, f"{strategy}_{bit}", aggregate="std"),
-                                "min EMD": get_econ_results(path, f"{strategy}_{bit}", aggregate="min"),
-                                "max EMD": get_econ_results(path, f"{strategy}_{bit}", aggregate="max"),
-                            })
-                    
-                    
-    df = pd.DataFrame(records)
-    create_dir("./results/econ")
-    df.to_csv("./results/econ/bit_flip.csv", index=False)
-    
-    
-def load_econ_metrics(tags: List[str]) -> None:
-    # store the results
-    records = []
-    for p in precisions:
-        for x, bs in enumerate(batch_sizes):
-            for y, lr in enumerate(learning_rates):
-                for tag in tags:
-                    # build the path
-                    path = None
-                    if tag == "baseline":
-                        path = os.path.join(DATA_PATH, f"bs{bs}_lr{lr}/ECON_{p}b")
-                    else:
-                        path = os.path.join(DATA_PATH, f"bs{bs}_lr{lr}/ECON_{tag}_{p}b")    
-                    
                     mc_max = get_metrics_results(path, "Bezier", "mode_connectivity", "max")
                     mc_min = get_metrics_results(path, "Bezier", "mode_connectivity", "min")
                     max_dev = mc_max if abs(mc_max) > abs(mc_min) else mc_min
@@ -331,8 +281,128 @@ def load_econ_metrics(tags: List[str]) -> None:
                         "max mc": max_dev
                     })
                     
-                    
     df = pd.DataFrame(records)
-    create_dir("./results/econ")
-    df.to_csv("./results/econ/metrics.csv", index=False)
+    save_path = f"./results/{model_type}/"
+    create_dir(save_path)
+    df.to_csv(os.path.join(save_path, "metrics.csv"), index=False)
+    
+    
+
+def load_benchmarks(
+    model_type: str,  # "econ", "mobilenet",
+    tags: List[str], 
+    batch_sizes: List[int] = None,
+    learning_rates: List[float] = None,
+    noise_modules: List[str] = None,
+    num_bits: Optional[List[int]] = None,
+    flip_strategies: Optional[List[str]] = None,
+    verbose: bool = False
+) -> None:
+    # Default parameters based on model type
+    batch_sizes = batch_sizes or ([1024] if model_type == "econ" else [256])
+    learning_rates = learning_rates or ([0.0015625] if model_type == "econ" else [0.1])
+
+    # Determine which function to use
+    result_key = "test_top1_acc" if model_type != "econ" else "AVG_EMD"
+
+    # Define noise tags based on model type
+    noise_tags = (
+        econ_noise_tags if model_type == "econ" else vision_noise_tags
+    )
+
+    # Store results
+    records = []
+    for p in precisions:
+        for bs in batch_sizes:
+            for lr in learning_rates:
+                for tag in tags:
+                    # Construct the base path
+                    base_path = f"bs{bs}_lr{lr}/"
+                    model_prefix = "ECON" if "econ" in model_type else "MobileNet"
+                    path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{p}b")
+
+                    if tag != "baseline":
+                        path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{tag}_{p}b")
+
+                    # Handle different result types
+                    if not flip_strategies:
+                        file_tag = "noise.csv"
+                        records.append({
+                            "batch_size": bs,
+                            "learning_rate": lr,
+                            "precision": p,
+                            "regularizer": labels[tag],
+                            "noise_type": "clean",
+                            result_key: get_results(path, aggregate="mean", key=result_key, verbose=verbose),
+                            f"{result_key} std": get_results(path, aggregate="std", key=result_key, verbose=verbose),
+                            f"max {result_key}": get_results(path, aggregate="max", key=result_key, verbose=verbose),
+                            f"min {result_key}": get_results(path, aggregate="min", key=result_key, verbose=verbose),
+                        })
+
+                        # Add noisy cases
+                        for noise_tag in noise_tags:
+                            if noise_modules and model_type == "econ":
+                                for module in noise_modules:
+                                    records.append({
+                                        "batch_size": bs,
+                                        "learning_rate": lr,
+                                        "precision": p,
+                                        "regularizer": labels[tag],
+                                        "noise_type": noise_tag,
+                                        "Noise module (%)": module,
+                                        result_key: get_results(path, f"{noise_tag}_{module}", aggregate="mean", key=result_key, verbose=verbose),
+                                        f"{result_key} std": get_results(path, f"{noise_tag}_{module}", aggregate="std", key=result_key, verbose=verbose),
+                                        f"max {result_key}": get_results(path, f"{noise_tag}_{module}", aggregate="max", key=result_key, verbose=verbose),
+                                        f"min {result_key}": get_results(path, f"{noise_tag}_{module}", aggregate="min", key=result_key, verbose=verbose),
+                                    })
+                            else:
+                                records.append({
+                                    "batch_size": bs,
+                                    "learning_rate": lr,
+                                    "precision": p,
+                                    "regularizer": labels[tag],
+                                    "noise_type": noise_tag,
+                                    result_key: get_results(path, noise_tag, aggregate="mean", key=result_key, verbose=verbose),
+                                    f"{result_key} std": get_results(path, noise_tag, aggregate="std", key=result_key, verbose=verbose),
+                                    f"max {result_key}": get_results(path, noise_tag, aggregate="max", key=result_key, verbose=verbose),
+                                    f"min {result_key}": get_results(path, noise_tag, aggregate="min", key=result_key, verbose=verbose),
+                                })
+                                    
+                    # bit flipping
+                    elif num_bits and flip_strategies:
+                        file_tag = "bit_flip.csv"
+                        records.append({
+                            "batch_size": bs,
+                            "learning_rate": lr,
+                            "precision": p,
+                            "regularizer": labels[tag],
+                            "flip_strategy": "clean",
+                            "# bits flipped": 0,
+                            result_key: get_results(path, aggregate="mean", key=result_key),
+                            f"{result_key} std": get_results(path, aggregate="std", key=result_key),
+                            f"min {result_key}": get_results(path, aggregate="min", key=result_key),
+                            f"max {result_key}": get_results(path, aggregate="max", key=result_key),
+                        })
+
+                        # Add bit-flip variations
+                        for strategy in flip_strategies:
+                            for bit in num_bits:
+                                records.append({
+                                    "batch_size": bs,
+                                    "learning_rate": lr,
+                                    "precision": p,
+                                    "regularizer": labels[tag],
+                                    "flip_strategy": strategy,
+                                    "# bits flipped": bit,
+                                    result_key: get_results(path, f"{strategy}_{bit}", aggregate="mean", key=result_key),
+                                    f"{result_key} std": get_results(path, f"{strategy}_{bit}", aggregate="std", key=result_key),
+                                    f"min {result_key}": get_results(path, f"{strategy}_{bit}", aggregate="min", key=result_key),
+                                    f"max {result_key}": get_results(path, f"{strategy}_{bit}", aggregate="max", key=result_key),
+                                })
+
+    # Convert to DataFrame and save
+    df = pd.DataFrame(records)
+    save_path = f"./results/{model_type}/"
+    create_dir(save_path)
+    df.to_csv(os.path.join(save_path, file_tag), index=False)
     

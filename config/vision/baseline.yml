@@ -49,12 +49,12 @@ fit:
 
 
 test:
-  noise:
-    path: ./data/VISION/CIFAR-10-C/CIFAR-10-C
-    num_samples: 10000
-    type:
-      - gaussian_noise
-      - impulse_noise
+  # noise:
+  #   path: ./data/VISION/CIFAR-10-C/CIFAR-10-C
+  #   num_samples: 10000
+  #   type:
+  #     - gaussian_noise
+  #     - impulse_noise
   bit_flip:
     n_bits:
       - 1
@@ -68,22 +68,22 @@ test:
   #   min_lam: -0.15
   #   max_lam: 0.15
   #   steps: 200
-  # mode_connectivity:
-  #   curve: Bezier
-  #   num_bends: 3
-  #   num_points: 60
-  #   max_epochs: 100
+  mode_connectivity:
+    curve: Bezier
+    num_bends: 3
+    num_points: 60
+    max_epochs: 100
   # TDA:
   #   N: 1
   #   min_lam: -0.15
   #   max_lam: 0.15
   #   steps: 10
-#   cka:
-#     batch_size: 10
-#     num_outputs: 5
-#     num_runs: 1
-#   hessian:
-#     n_iter: 100
-#     top_n: 1
+  cka:
+    batch_size: 10
+    num_outputs: 5
+    num_runs: 1
+  hessian:
+    n_iter: 100
+    top_n: 1
 
 

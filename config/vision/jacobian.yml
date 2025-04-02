@@ -1,4 +1,4 @@
-save_dir: 'MobileNet_JREG_0.001'
+save_dir: 'MobileNet_JREG_0.01'
 
 # dataset config
 data:
@@ -25,7 +25,7 @@ fit:
   regularizer:
     l1: 0.0
     l2: 0.0005
-    jacobian: 0.001
+    jacobian: 0.01
     parseval: 0.0
   
   # callbacks
@@ -43,7 +43,7 @@ fit:
     auto_insert_metric_name: 0
   # PL trainer config
   trainer:
-    max_epochs: 20
+    max_epochs: 50
     accelerator: gpu
     # strategy: ddp
 
@@ -61,6 +61,8 @@ test:
       - 5
       - 10
       - 20
+      - 50
+      - 100
     strategy:
       - fkeras
       - random
@@ -68,22 +70,22 @@ test:
   #   min_lam: -0.15
   #   max_lam: 0.15
   #   steps: 200
-  # mode_connectivity:
-  #   curve: Bezier
-  #   num_bends: 3
-  #   num_points: 60
-  #   max_epochs: 100
+  mode_connectivity:
+    curve: Bezier
+    num_bends: 3
+    num_points: 60
+    max_epochs: 100
   # TDA:
   #   N: 1
   #   min_lam: -0.15
   #   max_lam: 0.15
   #   steps: 10
-#   cka:
-#     batch_size: 10
-#     num_outputs: 5
-#     num_runs: 1
-#   hessian:
-#     n_iter: 100
-#     top_n: 1
+  cka:
+    batch_size: 10
+    num_outputs: 5
+    num_runs: 1
+  hessian:
+    n_iter: 100
+    top_n: 1
 
 

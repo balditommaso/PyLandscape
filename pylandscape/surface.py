@@ -305,6 +305,7 @@ class Surface(Metric):
         lams = np.linspace(min_lam, max_lam, steps).astype(np.float32)
         
         loss_hyperplane = self._compute_hyperplane(top_eigenvector, lams)
+        return lams, loss_hyperplane
     
 
     def random_hyperplane(
@@ -328,6 +329,6 @@ class Surface(Metric):
         min_lam, max_lam = lams
         lams = np.linspace(min_lam, max_lam, steps).astype(np.float32)
         
-        loss_surface = self._compute_hyperplane(directions, lams)
-        
+        loss_hyperplane = self._compute_hyperplane(directions, lams)
+        return lams, loss_hyperplane
         
