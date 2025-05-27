@@ -150,6 +150,7 @@ def quantize_model(
                     "per_channel_broadcastable_shape": (1, out_channels, 1, 1),
                     "scaling_stats_permute_dims": (1, 0, 2, 3),
                     "scaling_per_output_channel": scaling_per_output_channels,
+                    "scaling_min_val": 1e-8,
                 }
                 
             q_module = qnn.QuantReLU(

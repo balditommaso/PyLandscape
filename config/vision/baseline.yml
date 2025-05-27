@@ -55,15 +55,15 @@ test:
   #   type:
   #     - gaussian_noise
   #     - impulse_noise
-  bit_flip:
-    n_bits:
-      - 1
-      - 5
-      - 10
-      - 20
-    strategy:
-      - fkeras
-      - random
+  # bit_flip:
+  #   n_bits:
+  #     - 1
+  #     - 5
+  #     - 10
+  #     - 20
+  #   strategy:
+  #     - fkeras
+  #     - random
   # plot:
   #   min_lam: -0.15
   #   max_lam: 0.15
@@ -71,19 +71,19 @@ test:
   mode_connectivity:
     curve: Bezier
     num_bends: 3
-    num_points: 60
-    max_epochs: 100
+    num_points: 30
+    max_epochs: 10
   # TDA:
   #   N: 1
   #   min_lam: -0.15
   #   max_lam: 0.15
   #   steps: 10
-  cka:
-    batch_size: 10
-    num_outputs: 5
-    num_runs: 1
-  hessian:
-    n_iter: 100
-    top_n: 1
+  # cka:
+  #   batch_size: 10
+  #   num_outputs: 5
+  #   num_runs: 1
+  # hessian:
+  #   n_iter: 100
+  #   top_n: 1
 
 

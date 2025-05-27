@@ -53,10 +53,11 @@ def apply_quantization(model: nn.Module, bit_width: int, config: Dict[str, Any])
 
 
 def evaluate_model(
-        trainer: pl.Trainer, 
-        model: pl.LightningModule, 
-        dataloader: DataLoader, 
-        save_path: str = None) -> None:
+    trainer: pl.Trainer, 
+    model: pl.LightningModule, 
+    dataloader: DataLoader, 
+    save_path: str = None
+) -> None:
     '''
     Evaluate the model and if required store the results.
     '''
@@ -78,11 +79,12 @@ def yaml_load(config):
     
     
 def load_models(
-        model: pl.LightningModule, 
-        dir_path: str, 
-        tag: str, 
-        num_models: int = -1,
-        device: _device = 'cpu') -> List[pl.LightningModule]:
+    model: pl.LightningModule, 
+    dir_path: str, 
+    tag: str, 
+    num_models: int = -1,
+    device: _device = 'cpu'
+) -> List[pl.LightningModule]:
     '''
     Load models starting with a certain tag
     '''

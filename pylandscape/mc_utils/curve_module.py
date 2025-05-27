@@ -57,7 +57,7 @@ class CurveModule(Module):
         w_t = [None] * len(self.parameter_names)
         for i, parameter_name in enumerate(self.parameter_names):
             for j, coeff in enumerate(coeffs_t):
-                parameter = getattr(self, "%s_%d" % (parameter_name, j))
+                parameter = getattr(self, f"{parameter_name}_{j}")
                 if parameter is not None:
                     if w_t[i] is None:
                         w_t[i] = parameter * coeff

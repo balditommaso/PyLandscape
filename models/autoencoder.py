@@ -37,14 +37,6 @@ ENCODER_SIZE = {
 
 
 def econ_model(size: str = "baseline") -> Tuple[nn.Module, nn.Module]:
-    """_summary_
-
-    Args:
-        size (str): Models size available (small, baseline, large). Defaults to "baseline".
-
-    Returns:
-        Tuple(nn.Module, nn.Module): Encoder and Decoder part of the model.
-    """
     ENCODED_DIM = 16
     INPUT_SHAPE = (1, 8, 8)  # PyTorch defaults to (C, H, W)
     kernel_size, num_kernels, fc_input = ENCODER_SIZE[size]
