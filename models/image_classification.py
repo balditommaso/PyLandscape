@@ -3,6 +3,7 @@
 Modified from: https://github.com/osmr/imgclsmob/blob/master/pytorch/pytorchcv/models
 """
 import pytorch_lightning as pl
+import torch
 from typing import Union
 from brevitas import config
 from torch import nn
@@ -77,6 +78,8 @@ class ConvBlock(nn.Module):
         x = self.conv(x)
         x = self.bn(x)
         x = self.activation(x)
+        if torch.isnan(x).any():
+            print("Not valid tensor!")
         return x
 
 

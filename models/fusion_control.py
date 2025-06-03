@@ -23,7 +23,7 @@ def fusion_model(filters_conv: List[int], neurons_dense: List[int]) -> nn.Module
     for i, filter in enumerate(filters_conv):
         layers_list.extend([
             (f"conv_{i}", nn.Conv2d(in_channels, filter, kernel_size=3)),
-            (f"act_{i}", nn.ReLU()),
+            (f"activation_{i}", nn.ReLU()),
             (f"max_pool_{i}", nn.MaxPool2d(2))
         ])
         in_channels = filter
@@ -39,7 +39,7 @@ def fusion_model(filters_conv: List[int], neurons_dense: List[int]) -> nn.Module
     for i, features in enumerate(neurons_dense, len(filters_conv)):
         layers_list.extend([
             (f"dense_{i}", nn.Linear(in_features, features)),
-            (f"act_{i}", nn.ReLU()),
+            (f"activation_{i}", nn.ReLU()),
         ])
         in_features = features
         

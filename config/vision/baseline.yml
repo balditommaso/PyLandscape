@@ -71,8 +71,8 @@ test:
   mode_connectivity:
     curve: Bezier
     num_bends: 3
-    num_points: 30
-    max_epochs: 10
+    num_points: 10
+    max_epochs: 50
   # TDA:
   #   N: 1
   #   min_lam: -0.15

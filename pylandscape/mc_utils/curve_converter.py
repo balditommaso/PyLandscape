@@ -45,8 +45,8 @@ def curved_model(model: Module, fix_points: List[bool]) -> Module:
             curve_module = QuantConv2d(module, fix_points)
         elif isinstance(module, qnn.QuantLinear) and hasattr(module, "quant_weight"):
             curve_module = QuantLinear(module, fix_points)
-        elif isinstance(module, QuantNonLinearActLayer):
-            curve_module = QuantNLAL(module, fix_points)
+        # elif isinstance(module, QuantNonLinearActLayer):
+        #     curve_module = QuantNLAL(module, fix_points)
         # full precision
         elif isinstance(module, nn.ConvTranspose2d):
             curve_module = ConvTranspose2D(module, fix_points)

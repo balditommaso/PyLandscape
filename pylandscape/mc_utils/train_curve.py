@@ -41,6 +41,7 @@ class Interpolate:
             filter(lambda param: param.requires_grad, self.model.parameters()),
             lr=self.lr
         )
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
         self.model = self.model.to(self.device)
         self.model.train()
         for epoch in range(epochs):
@@ -63,6 +64,7 @@ class Interpolate:
                     
                 loss_hist_train /= len(dataloader)
                 
+            scheduler.step() 
             print(f"Epoch {epoch+1}/{epochs} - Train loss: {loss_hist_train:.4f}")
                 
     

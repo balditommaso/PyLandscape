@@ -72,11 +72,11 @@ test:
   #   min_lam: -0.15
   #   max_lam: 0.15
   #   steps: 200
-  # mode_connectivity:
-  #   curve: Bezier
-  #   num_bends: 3
-  #   num_points: 60
-  #   max_epochs: 100
+  mode_connectivity:
+    curve: Bezier
+    num_bends: 3
+    num_points: 60
+    max_epochs: 30
   # cka:
   #   batch_size: 10
   #   num_outputs: 
@@ -86,10 +86,6 @@ test:
   # hessian:
   #   n_iter: 100
   #   top_n: 1
-  TDA:
-    N: 2
-    min_lam: -0.15
-    max_lam: 0.15
-    steps: 4
+
 
 

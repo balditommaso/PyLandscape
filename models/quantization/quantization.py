@@ -29,7 +29,8 @@ def get_quant_layer_config(
     quant_config = dict(
         bias_quant=IntBias,
         weight_quant=weight_quant,
-        weight_bit_width=bit_width
+        weight_bit_width=bit_width,
+        scaling_min_val=1e-6,
     )
     # add input quantization
     if first_layer:
@@ -150,13 +151,13 @@ def quantize_model(
                     "per_channel_broadcastable_shape": (1, out_channels, 1, 1),
                     "scaling_stats_permute_dims": (1, 0, 2, 3),
                     "scaling_per_output_channel": scaling_per_output_channels,
-                    "scaling_min_val": 1e-8,
                 }
                 
             q_module = qnn.QuantReLU(
                 act_quant=CommonUintActQuant,
                 bit_width=act_bit_width,
                 return_quant_tensor=True,
+                scaling_min_val=1e-6,
                 **act_config
             )
         elif isinstance(module, nn.Sigmoid):
