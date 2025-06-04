@@ -1,6 +1,6 @@
 
 """
-Modified from: https://github.com/osmr/imgclsmob/blob/master/pytorch/pytorchcv/models
+Modified from: https://github.com/Xilinx/brevitas/blob/master/src/brevitas_examples/imagenet_classification/models/mobilenetv1.py
 """
 import pytorch_lightning as pl
 import torch
@@ -132,12 +132,19 @@ class MobileNet(nn.Module):
 
 
 
-def mobilenet_v1():
+def mobilenet_v1(num_classes: int):
 
-    channels = [[32], [64], [128, 128], [256, 256], [512, 512], [1024]]
+    channels = [
+        [32], 
+        [64], 
+        [128, 128], 
+        [256, 256], 
+        [512, 512, 512, 512, 512, 512], 
+        [1024, 1024]
+    ]
     first_stage_stride = False
 
-    net = MobileNet(channels=channels, first_stage_stride=first_stage_stride)
+    net = MobileNet(channels=channels, first_stage_stride=first_stage_stride, num_classes=num_classes)
 
     return net
 
@@ -164,7 +171,7 @@ class VisionModel(pl.LightningModule):
         self.quantized = quantized
         self.save_hyperparameters()
         self.bit_width = bit_width
-        self.model = mobilenet_v1()
+        self.model = mobilenet_v1(num_classes=config['data']['num_classes'])
         
         self.criterion = nn.CrossEntropyLoss(
             label_smoothing=config["fit"]["label_smoothing"]

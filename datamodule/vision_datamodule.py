@@ -9,15 +9,13 @@ from torch.utils.data import DataLoader, random_split, Subset, Dataset
 from .utils import extract_data
 
 
-CIFAR10_mean = [0.49139968, 0.48215841, 0.44653091]
-CIFAR10_std = [0.2023, 0.1994, 0.2010]
-
-ImageNet1k_mean = [0.485, 0.456, 0.406]
-ImageNet1k_std = [0.229, 0.224, 0.225]
-
-
+# ---------------------------------------------------------------------------- #
+#                                   CIFAR-10                                   #
+# ---------------------------------------------------------------------------- #
 C_CIFAR10_extract_path ="./data/VISION/CIFAR-10-C"
 
+CIFAR10_mean = [0.49139968, 0.48215841, 0.44653091]
+CIFAR10_std = [0.2023, 0.1994, 0.2010]
 
 class CIFAR10(datasets.CIFAR10):
     def __init__(
@@ -87,33 +85,7 @@ class CIFAR10C(Dataset):
         
         return image, label
    
-
-        
-class ImageNet1k(datasets.ImageNet):
-    def __init__(
-            self, 
-            root: str,
-            train: bool = True, 
-            rescale: bool = True,
-            center: bool = True,
-            rand_aug: Optional[int] = None
-        ) -> None:
-        split = 'train' if train else 'val'
-        mean = ImageNet1k_mean if center else [0., 0., 0.]
-        std = ImageNet1k_std if rescale else [1., 1., 1.]
-        
-        transf_list = []
-        if rand_aug is not None:
-            transf_list.append(transforms.RandAugment(num_ops=2, magnitude=rand_aug))
-        transf_list.append(transforms.ToTensor())
-        transf_list.append(transforms.Normalize(mean, std))
-        transf_list.append(transforms.Resize(size=(224, 224), antialias=None))
-        
-        transform = transforms.Compose(transf_list)
-        super().__init__(root=root, split=split, transform=transform)
-
-
-
+    
 class CIFAR10DataModule(pl.LightningDataModule):
     def __init__(
             self, 
@@ -254,18 +226,48 @@ class CIFAR10DataModule(pl.LightningDataModule):
               f"train dataset:\t{len(self.train_dataset)}\n" \
               f"val dataset:\t{len(self.val_dataset)}\n" \
               f"test dataset:\t{len(self.test_dataset)}\n")
+        
+        
+# ---------------------------------------------------------------------------- #
+#                                  DATA MODULE                                 #
+# ---------------------------------------------------------------------------- #
+ImageNet1k_mean = [0.485, 0.456, 0.406]
+ImageNet1k_std = [0.229, 0.224, 0.225]
 
+class ImageNet1k(datasets.ImageNet):
+    def __init__(
+        self, 
+        root: str,
+        train: bool = True, 
+        rescale: bool = True,
+        center: bool = True,
+        rand_aug: Optional[int] = None
+    ) -> None:
+        split = 'train' if train else 'val'
+        mean = ImageNet1k_mean if center else [0., 0., 0.]
+        std = ImageNet1k_std if rescale else [1., 1., 1.]
+        
+        transf_list = []
+        if rand_aug is not None:
+            transf_list.append(transforms.RandAugment(num_ops=2, magnitude=rand_aug))
+        transf_list.append(transforms.ToTensor())
+        transf_list.append(transforms.Normalize(mean, std))
+        transf_list.append(transforms.Resize(size=(224, 224), antialias=None))
+        
+        transform = transforms.Compose(transf_list)
+        super().__init__(root=root, split=split, transform=transform)
 
 
 class ImageNetDataModule(pl.LightningDataModule):
     def __init__(
-            self, 
-            data_path: str,
-            batch_size: int = 1024,
-            val_size: float = 0.2,
-            num_workers: int = 8,
-            seed: int = 20000605,
-            **kwargs) -> None:
+        self, 
+        data_path: str,
+        batch_size: int = 128,
+        val_size: float = 0.2,
+        num_workers: int = 8,
+        seed: int = 20000605,
+        **kwargs
+    ) -> None:
         super().__init__()
         
         self.data_path = data_path
@@ -273,30 +275,35 @@ class ImageNetDataModule(pl.LightningDataModule):
         self.val_size = val_size
         self.num_workers = num_workers
         self.seed = seed
-
-        
+ 
         self.setup(0)
         
         
     def setup(self, stage: str) -> None:
         torch.manual_seed(self.seed)
-        self.train_dataset = ImageNet1k(root=self.data_path,
-                                        train=True,
-                                        rescale=True,
-                                        center=True,
-                                        rand_aug=9)
+        self.train_dataset = ImageNet1k(
+            root=self.data_path,
+            train=True,
+            rescale=True,
+            center=True,
+            rand_aug=9
+        )
         
-        self.val_dataset = datasets.ImageNet(root=self.data_path,
-                                             train=True,
-                                             rescale=True,
-                                             center=True,
-                                             rand_aug=None)
+        self.val_dataset = ImageNet1k(
+            root=self.data_path,
+            train=True,
+            rescale=True,
+            center=True,
+            rand_aug=None
+        )
         
-        self.test_dataset = datasets.ImageNet(root=self.data_path,
-                                              train=False,
-                                              rescale=True,
-                                              center=True,
-                                              rand_aug=None)
+        self.test_dataset = ImageNet1k(
+            root=self.data_path,
+            train=False,
+            rescale=True,
+            center=True,
+            rand_aug=None
+        )
         
         # we are taking the validation from the training without applying augmentation,
         # the seed is used to be sure to have the same partitioning among all the trained models

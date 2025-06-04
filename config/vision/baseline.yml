@@ -2,11 +2,11 @@ save_dir: 'MobileNet'
 
 # dataset config
 data:
-  name: CIFAR10DataModule
-  data_path: ./data/VISION/
+  name: ImageNetDataModule
+  data_path: ./data/VISION/imageNet
   num_workers: 1
   val_size: 0.1
-  num_classes: 10
+  num_classes: 1000
 
 
 model:
