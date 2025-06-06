@@ -73,7 +73,8 @@ def main():
         config=args.config,
         quantized=args.precision < 32,
         bit_width=args.precision,
-        learning_rate=args.lr
+        learning_rate=args.lr,
+        pretrained=args.pretrained
     )
     if not hasattr(models, model_cfg["name"]):
         raise ValueError(f"Not Valid model: {model_cfg['name']} ")
@@ -81,8 +82,7 @@ def main():
     architecture = getattr(models, model_cfg["name"])
     
     # load the data from the full precision version
-    if args.pretrained:
-        # checkpoint path
+    if args.pretrained and not config["save_dir"].startswith("MobileNet"):
         full_precision_ckpt = config["save_dir"].split("_")[0]
         model_ckpt = os.path.join(
             args.saving_folder, 

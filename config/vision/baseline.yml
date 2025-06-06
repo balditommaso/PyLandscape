@@ -43,7 +43,7 @@ fit:
     auto_insert_metric_name: 0
   # PL trainer config
   trainer:
-    max_epochs: 50
+    max_epochs: 10
     accelerator: gpu
     # strategy: ddp
 

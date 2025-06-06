@@ -2,11 +2,12 @@
 """
 Modified from: https://github.com/Xilinx/brevitas/blob/master/src/brevitas_examples/imagenet_classification/models/mobilenetv1.py
 """
+import requests
 import pytorch_lightning as pl
 import torch
 from typing import Union
 from brevitas import config
-from torch import nn
+from torch import nn, hub
 from torch.nn import Sequential
 from torch.optim import SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR, CosineAnnealingLR, OneCycleLR
@@ -78,8 +79,8 @@ class ConvBlock(nn.Module):
         x = self.conv(x)
         x = self.bn(x)
         x = self.activation(x)
-        if torch.isnan(x).any():
-            print("Not valid tensor!")
+        # if torch.isnan(x).any():
+        #     print("Not valid tensor!")
         return x
 
 
@@ -132,8 +133,7 @@ class MobileNet(nn.Module):
 
 
 
-def mobilenet_v1(num_classes: int):
-
+def mobilenet_v1(num_classes: int, pretrained: bool):
     channels = [
         [32], 
         [64], 
@@ -145,7 +145,9 @@ def mobilenet_v1(num_classes: int):
     first_stage_stride = False
 
     net = MobileNet(channels=channels, first_stage_stride=first_stage_stride, num_classes=num_classes)
-
+    if pretrained:
+        state_dict = hub.load_state_dict_from_url(MOBILENET_URL, progress=True)
+        net.load_state_dict(state_dict, strict=True)
     return net
 
 
@@ -155,7 +157,8 @@ class VisionModel(pl.LightningModule):
         config: Union[str, dict],
         quantized: bool, 
         learning_rate: float,
-        bit_width: int=32,
+        bit_width: int = 32,
+        pretrained: bool = False,
         *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -171,7 +174,10 @@ class VisionModel(pl.LightningModule):
         self.quantized = quantized
         self.save_hyperparameters()
         self.bit_width = bit_width
-        self.model = mobilenet_v1(num_classes=config['data']['num_classes'])
+        self.model = mobilenet_v1(
+            num_classes=config['data']['num_classes'], 
+            pretrained=pretrained, 
+        )
         
         self.criterion = nn.CrossEntropyLoss(
             label_smoothing=config["fit"]["label_smoothing"]

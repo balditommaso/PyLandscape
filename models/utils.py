@@ -8,6 +8,10 @@ from torch.utils.data import DataLoader
 from .quantization import quantize_model, CommonUintActQuant, CommonIntActQuant
 
 
+
+MOBILENET_URL = 'https://github.com/osmr/imgclsmob/releases/download/v0.0.155/mobilenet_w1-0895-7e1d739f.pth.zip'
+
+
 def save_on_file(path: str, res: Union[float, Dict[str, float]]) -> None:
     '''
     Store on text file the results
