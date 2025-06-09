@@ -65,59 +65,6 @@ def main():
     data_module = getattr(dm, data_cfg["name"])(batch_size=args.batch_size, **data_cfg)
 
     # ---------------------------------------------------------------------------- #
-    #                                Lightning model                               #
-    # ---------------------------------------------------------------------------- #
-    # starting from a pretrained model
-    model_cfg = config["model"]
-    model_args = dict(
-        config=args.config,
-        quantized=args.precision < 32,
-        bit_width=args.precision,
-        learning_rate=args.lr,
-        pretrained=args.pretrained
-    )
-    if not hasattr(models, model_cfg["name"]):
-        raise ValueError(f"Not Valid model: {model_cfg['name']} ")
-    # get the instance of the required model
-    architecture = getattr(models, model_cfg["name"])
-    
-    # load the data from the full precision version
-    if args.pretrained and not config["save_dir"].startswith("MobileNet"):
-        full_precision_ckpt = config["save_dir"].split("_")[0]
-        model_ckpt = os.path.join(
-            args.saving_folder, 
-            f"{full_precision_ckpt}_32b/"
-            f"{full_precision_ckpt.lower()}_" \
-            f"{args.experiment}_best.ckpt"
-        )
-        print(f"Loading the model from:\n\t{model_ckpt}")
-        if not os.path.exists(model_ckpt):
-            raise ValueError("Warning: pretrained version of the model not found!")
-        
-        # load the weights of the pretrained model
-        pl_model = architecture.load_from_checkpoint(
-            model_ckpt, 
-            map_location=device, 
-            **model_args
-        ) 
-        
-    elif args.recover:
-        # checkpoint path
-        model_ckpt = os.path.join(save_dir, f"{experiment}_best.ckpt")
-        print(f"Loading the model from:\n\t{model_ckpt}")
-        if not os.path.exists(model_ckpt):
-            raise ValueError("Warning: recover version of the model not found!")
-        
-        # recover the model from the checkpoint
-        pl_model = architecture.load_from_checkpoint(
-            model_ckpt, 
-            map_location=device, 
-            **model_args
-        ) 
-    else:
-        pl_model = architecture(**model_args)
-
-    # ---------------------------------------------------------------------------- #
     #                                    Trainer                                   #
     # ---------------------------------------------------------------------------- #
     # tensorboard directory
@@ -145,7 +92,68 @@ def main():
         callbacks=callbacks,
         fast_dev_run=args.fast_dev_run    
     )
+
+    # ---------------------------------------------------------------------------- #
+    #                                Lightning model                               #
+    # ---------------------------------------------------------------------------- #
+    # starting from a pretrained model
+    model_cfg = config["model"]
+    model_args = dict(
+        config=args.config,
+        quantized=args.precision < 32,
+        bit_width=args.precision,
+        learning_rate=args.lr,
+        pretrained=args.pretrained
+    )
+    if not hasattr(models, model_cfg["name"]):
+        raise ValueError(f"Not Valid model: {model_cfg['name']} ")
+    # get the instance of the required model
+    architecture = getattr(models, model_cfg["name"])
     
+    # load the data from the full precision version
+    if args.pretrained:
+        full_precision_ckpt = config["save_dir"].split("_")[0]
+        model_ckpt = os.path.join(
+            args.saving_folder, 
+            f"{full_precision_ckpt}_32b/"
+            f"{full_precision_ckpt.lower()}_" \
+            f"{args.experiment}_best.ckpt"
+        )
+        
+        # walk-around to handle downloaded models
+        if config["save_dir"].startswith("MobileNet") and not os.path.exists(model_ckpt):
+            pl_model = architecture(**model_args)
+            trainer.validate(pl_model, data_module.test_dataloader(), verbose=False)
+            trainer.save_checkpoint(model_ckpt)
+        
+        print(f"Loading the model from:\n\t{model_ckpt}")
+        if not os.path.exists(model_ckpt):
+            raise ValueError("Warning: pretrained version of the model not found!")
+        
+        # load the weights of the pretrained model
+        pl_model = architecture.load_from_checkpoint(
+            model_ckpt, 
+            map_location=device, 
+            **model_args
+        ) 
+        
+    elif args.recover:
+        # checkpoint path
+        model_ckpt = os.path.join(save_dir, f"{experiment}_best.ckpt")
+        print(f"Loading the model from:\n\t{model_ckpt}")
+        if not os.path.exists(model_ckpt):
+            raise ValueError("Warning: recover version of the model not found!")
+        
+        # recover the model from the checkpoint
+        pl_model = architecture.load_from_checkpoint(
+            model_ckpt, 
+            map_location=device, 
+            **model_args
+        ) 
+    else:
+        pl_model = architecture(**model_args)
+
+
     # ---------------------------------------------------------------------------- #
     #                                  Train model                                 #
     # ---------------------------------------------------------------------------- #

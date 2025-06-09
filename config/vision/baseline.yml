@@ -5,7 +5,7 @@ data:
   name: ImageNetDataModule
   data_path: ./data/VISION/imageNet
   num_workers: 1
-  val_size: 0.1
+  val_size: 0.01
   num_classes: 1000
 
 
