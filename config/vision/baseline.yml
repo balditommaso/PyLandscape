@@ -15,7 +15,7 @@ model:
   quantization:
     verbose: 0
     input_quant: CommonIntActQuant
-    
+    first_layer_bit_width: 8
 
 fit:
   # learning rate scheduler

@@ -82,7 +82,7 @@ def quantize_model(
         # different precision for the first layer if needed
         bit_width = precision
         if first_layer and first_layer_bit_width is not None:
-            bit_width = first_layer_bit_width
+            bit_width = max(bit_width, first_layer_bit_width)
         
         q_module = None
         # ---------------------------------------------------------------------------- #
