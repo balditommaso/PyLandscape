@@ -2,11 +2,11 @@ save_dir: 'MobileNet'
 
 # dataset config
 data:
-  name: TinyImageNetDataModule
-  data_path: ./data/VISION/tiny-imagenet
+  name: CIFAR10DataModule
+  data_path: ./data/VISION/
   num_workers: 2
-  val_size: 0.3
-  num_classes: 200
+  val_size: 0.1
+  num_classes: 100
 
 
 model:
