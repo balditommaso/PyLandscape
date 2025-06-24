@@ -2,11 +2,11 @@ save_dir: 'MobileNet'
 
 # dataset config
 data:
-  name: ImageNetDataModule
-  data_path: ./data/VISION/imageNet
-  num_workers: 1
-  val_size: 0.01
-  num_classes: 1000
+  name: TinyImageNetDataModule
+  data_path: ./data/VISION/tiny-imagenet
+  num_workers: 2
+  val_size: 0.3
+  num_classes: 200
 
 
 model:
@@ -20,7 +20,7 @@ model:
 fit:
   # learning rate scheduler
   lr_scheduler: cosine
-  label_smoothing: 0.1
+  label_smoothing: 0.0
   # regularization during training
   regularizer:
     l1: 0.0
@@ -43,7 +43,7 @@ fit:
     auto_insert_metric_name: 0
   # PL trainer config
   trainer:
-    max_epochs: 10
+    max_epochs: 300
     accelerator: gpu
     # strategy: ddp
 

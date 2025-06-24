@@ -5,6 +5,7 @@ from .fusion_datamodule import (FusionDataModule,
                                 Fusion_label_std)
 from .vision_datamodule import (ImageNetDataModule, 
                                 CIFAR10DataModule, 
+                                TinyImageNetDataModule,
                                 CIFAR10_mean, 
                                 CIFAR10_std, 
                                 ImageNet1k_mean, 

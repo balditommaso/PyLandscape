@@ -47,6 +47,9 @@ handle_options() {
             --recover)
                 recover=1
                 ;;
+            --fast_test)
+                precisions=(4 8 12)
+                ;;
             --num_test)
                 if has_argument $@; then
                     num_test=$(extract_argument $@)

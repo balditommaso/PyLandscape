@@ -1,11 +1,15 @@
 import os
 import numpy as np
 import torch
+import zipfile
 from torch import tensor
 import pytorch_lightning as pl
+from tqdm import tqdm
 from typing import Optional, Callable
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split, Subset, Dataset
+from pathlib import Path
+from urllib.request import urlretrieve
 from .utils import extract_data
 
 
@@ -88,14 +92,14 @@ class CIFAR10C(Dataset):
     
 class CIFAR10DataModule(pl.LightningDataModule):
     def __init__(
-            self, 
-            data_path: str,
-            batch_size: int=1024,
-            val_size: float=0.2,
-            num_workers: int=8,
-            seed: int = 20000605,
-            **kwargs
-        ) -> None:
+        self, 
+        data_path: str,
+        batch_size: int=1024,
+        val_size: float=0.2,
+        num_workers: int=8,
+        seed: int = 20000605,
+        **kwargs
+    ) -> None:
         super().__init__()
         
         self.data_path = data_path
@@ -226,8 +230,139 @@ class CIFAR10DataModule(pl.LightningDataModule):
               f"train dataset:\t{len(self.train_dataset)}\n" \
               f"val dataset:\t{len(self.val_dataset)}\n" \
               f"test dataset:\t{len(self.test_dataset)}\n")
+
+
+# ---------------------------------------------------------------------------- #
+#                                 Tiny ImageNet                                #
+# ---------------------------------------------------------------------------- #
+class TinyImageNetDataModule(pl.LightningDataModule):
+    
+    DATASET_URL = "http://cs231n.stanford.edu/tiny-imagenet-200.zip"
+    
+    def __init__(
+        self, 
+        data_path: str,
+        batch_size: int=1024,
+        val_size: float=0.2,
+        num_workers: int=8,
+        seed: int = 20000605,
+        **kwargs
+    ) -> None:
+        super().__init__()
+        self.data_path = data_path
+        self.batch_size = batch_size
+        self.val_size = val_size
+        self.num_workers = num_workers
+        self.seed = seed
+        self.load_data()
+        self.setup(0)
+        
+    
+    def load_data(self) -> None:
+        dataset_zip = Path(os.path.join(self.data_path, "tiny-imagenet-200.zip"))
+        if not os.path.exists(self.data_path):
+            os.mkdir(self.data_path)
+        # check if the dataset exists
+        if not dataset_zip.exists():
+            print("Downloading tiny ImageNet dataset...")
+            with tqdm(unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc=self.DATASET_URL.split("/")[-1]) as t:
+
+                def show_progress(block_num, block_size, total_size):
+                    t.total = total_size
+                    t.update(block_num * block_size - t.n)
+
+                urlretrieve(url=self.DATASET_URL, filename=dataset_zip, reporthook=show_progress)
+            
+            # unzip the file
+            with zipfile.ZipFile(dataset_zip, "r") as zip_ref:
+                zip_ref.extractall(self.data_path)
+            
+            self.data_path = os.path.join(self.data_path, "tiny-imagenet-200")    
+            
+            # create val image folder
+            val_dir = os.path.join(self.data_path, "val")
+            img_dir = os.path.join(val_dir, "images")
+            
+            with open(os.path.join(val_dir, "val_annotations.txt"), "r") as fp:
+                data = fp.readlines()
+                val_img_dict = {}
+                for line in data:
+                    words = line.split("\t")
+                    val_img_dict[words[0]] = words[1]
+                    
+            for img, folder in val_img_dict.items():
+                newpath = (os.path.join(img_dir, folder))
+                if not os.path.exists(newpath):
+                    os.makedirs(newpath)
+                if os.path.exists(os.path.join(img_dir, img)):
+                    os.rename(os.path.join(img_dir, img), os.path.join(newpath, img))
+            print("Downloading tiny ImageNet complete!")    
+        self.data_path = os.path.join(self.data_path, "tiny-imagenet-200")  
+        print("Tiny ImageNet already downloaded!")    
+                
+                
+    def setup(self, stage: str) -> None:
+        torch.manual_seed(self.seed)
+        # transformations
+        norm = transforms.Normalize(mean=ImageNet1k_mean, std=ImageNet1k_std)
+        train_trans = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor(), norm])
+        val_trans = transforms.Compose([transforms.ToTensor(), norm])
+        train_dir = os.path.join(self.data_path, "train")
+        self.train_dataset = datasets.ImageFolder(train_dir, transform=train_trans)
+        
+        val_dir = os.path.join(self.data_path, "val", "images")
+        self.val_dataset = datasets.ImageFolder(val_dir, transform=val_trans)
+        
+        self.val_dataset, self.test_dataset = random_split(
+            self.val_dataset,
+            [self.val_size, 1 - self.val_size],
+            generator=torch.Generator().manual_seed(self.seed)
+        )
+        
+        self.summary()
         
         
+    def train_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+            pin_memory=True
+        )
+    
+    
+    def val_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            drop_last=True,
+            pin_memory=True
+        )
+    
+    
+    def test_dataloader(self) -> DataLoader:
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            drop_last=True,
+            pin_memory=True
+        )
+        
+        
+    def summary(self):
+        print(f"** ImageNet dataset: **\n" \
+              f"train dataset:\t{len(self.train_dataset)}\n" \
+              f"val dataset:\t{len(self.val_dataset)}\n" \
+              f"test dataset:\t{len(self.test_dataset)}\n")
+    
+        
+    
+    
 # ---------------------------------------------------------------------------- #
 #                                   ImageNet                                   #
 # ---------------------------------------------------------------------------- #
@@ -256,6 +391,8 @@ class ImageNet1k(datasets.ImageNet):
         
         transform = transforms.Compose(transf_list)
         super().__init__(root=root, split=split, transform=transform)
+        
+        
 
 
 class ImageNetDataModule(pl.LightningDataModule):
