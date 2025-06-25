@@ -2,7 +2,7 @@ save_dir: 'MobileNet'
 
 # dataset config
 data:
-  name: CIFAR10DataModule
+  name: CIFAR100DataModule
   data_path: ./data/VISION/
   num_workers: 2
   val_size: 0.1
@@ -20,7 +20,7 @@ model:
 fit:
   # learning rate scheduler
   lr_scheduler: cosine
-  label_smoothing: 0.0
+  label_smoothing: 0.1
   # regularization during training
   regularizer:
     l1: 0.0
@@ -43,7 +43,7 @@ fit:
     auto_insert_metric_name: 0
   # PL trainer config
   trainer:
-    max_epochs: 300
+    max_epochs: 350
     accelerator: gpu
     # strategy: ddp
 

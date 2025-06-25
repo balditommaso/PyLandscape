@@ -255,10 +255,56 @@ class CIFAR100(datasets.CIFAR100):
         if train and augment:
             transf_list.append(transforms.RandomCrop(32, padding=4))
             transf_list.append(transforms.RandomHorizontalFlip())
+            transf_list.append(transforms.RandAugment())
             
         transf_list = transf_list + [transforms.ToTensor(), transforms.Normalize(mean, std)]
         transform = transforms.Compose(transf_list)
         super().__init__(root=root, train=train, transform=transform, download=download)
+        
+        
+class CIFAR100C(Dataset):
+    C_CIFAR100_url = "https://zenodo.org/records/3555552/files/CIFAR-100-C.tar?download=1"
+    C_CIFAR100_tar_path = "CIFAR-100-C.tar"
+    
+    def __init__(self, root: str, corruption: str) -> None:
+        self.root = root
+        # normalize the images
+        self.transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(CIFAR100_mean, CIFAR100_std)
+            ]) 
+        
+        self.data, self.labels = self.load_data(corruption)
+        
+        
+    def load_data(self, corruption: str):
+        # check if the C-CIFAR-100 is downloaded
+        if not os.path.exists(self.root):
+            extract_data(self.C_CIFAR10_url, self.C_CIFAR10_tar_path, self.root)
+        
+        # path to the selected corruption
+        data_path = os.path.join(self.root, f"{corruption}.npy")
+        if not os.path.exists(data_path):
+            raise ValueError(f"Not valid corruption type selected: {corruption}")
+        
+        images = np.load(data_path)
+        labels = np.load(os.path.join(self.root, "labels.npy"))
+        
+        return images, labels
+        
+    
+    def __len__(self):
+        return len(self.data)
+    
+    
+    def __getitem__(self, index):
+        image = self.data[index]
+        label = self.labels[index]
+        
+        if self.transform:
+            image = self.transform(image)
+        
+        return image, label
 
 
 class CIFAR100DataModule(pl.LightningDataModule):
