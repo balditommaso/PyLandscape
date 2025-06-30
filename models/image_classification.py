@@ -150,9 +150,7 @@ def mobilenet_v1(num_classes: int, pretrained: bool):
         first_layer_stride=first_layer_stride,
         num_classes=num_classes
     )
-    if pretrained:
-        state_dict = hub.load_state_dict_from_url(MOBILENET_URL, progress=True)
-        net.load_state_dict(state_dict, strict=True)
+
     return net
 
 

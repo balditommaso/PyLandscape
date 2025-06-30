@@ -280,7 +280,7 @@ class CIFAR100C(Dataset):
     def load_data(self, corruption: str):
         # check if the C-CIFAR-100 is downloaded
         if not os.path.exists(self.root):
-            extract_data(self.C_CIFAR10_url, self.C_CIFAR10_tar_path, self.root)
+            extract_data(self.C_CIFAR100_url, self.C_CIFAR100_tar_path, self.root)
         
         # path to the selected corruption
         data_path = os.path.join(self.root, f"{corruption}.npy")
@@ -403,8 +403,27 @@ class CIFAR100DataModule(pl.LightningDataModule):
         )
         
         
+    def corrupted_dataloader(self, path: str, corruption: str, num_samples: Optional[int] = None) -> DataLoader: 
+        c_dataset = CIFAR100C(path, corruption)
+        assert len(c_dataset) >= num_samples, "There are no enough samples!"
+        
+        # take the first samples
+        c_dataset = Subset(c_dataset, range(num_samples))
+        # c_dataset, _ = random_split(c_dataset, [num_samples, len(c_dataset) - num_samples])
+        print(f"C-CIFAR-100 ({corruption}):\t{len(c_dataset)} sameples")
+
+        return DataLoader(
+            c_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            drop_last=True,
+            pin_memory=True
+        )
+        
+        
     def summary(self):
-        print(f"** CIFAR-10 dataset: **\n" \
+        print(f"** CIFAR-100 dataset: **\n" \
               f"train dataset:\t{len(self.train_dataset)}\n" \
               f"val dataset:\t{len(self.val_dataset)}\n" \
               f"test dataset:\t{len(self.test_dataset)}\n")

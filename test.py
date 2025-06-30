@@ -84,7 +84,8 @@ def main():
     # ---------------------------------------------------------------------------- #
     #                                  BENCHMARKS                                  #
     # ---------------------------------------------------------------------------- #   
-    is_cifar = isinstance(data_module, dm.CIFAR10DataModule)
+    is_cifar = isinstance(data_module, dm.CIFAR10DataModule) or \
+        isinstance(data_module, dm.CIFAR100DataModule)
     # --------------------------------- C-CIFAR-10 ------------------------------- #
     if 'noise' in config['test'] and is_cifar:
         data_path = config["test"]["noise"]["path"]
