@@ -52,7 +52,7 @@ class CurveNet(Module):
         """
         assert index in range(self.num_bends), "Index out of bound!"
         target_parameters =self._get_model_by_index(index)
-        base_parameters = [param for name, param in base_model.named_parameters() if "activation" not in name]
+        base_parameters = [param for name, param in base_model.named_parameters()] # if "activation" not in name]
         assert len(target_parameters) == len(base_parameters), "Models must have the same number of layer"
         for (name, target_param), base_param in zip(target_parameters.items(), base_parameters):
             target_param.data = base_param.data

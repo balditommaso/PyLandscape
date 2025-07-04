@@ -240,7 +240,7 @@ def load_metrics(
     verbose: bool = False
 ) -> None:
         # Default parameters based on model type
-    batch_sizes = batch_sizes or ([1024] if model_type == "econ" else [256])
+    batch_sizes = batch_sizes or ([1024] if model_type == "econ" else [128])
     learning_rates = learning_rates or ([0.0015625] if model_type == "econ" else [0.1])
     # store the results
     records = []
@@ -299,7 +299,7 @@ def load_benchmarks(
     verbose: bool = False
 ) -> None:
     # Default parameters based on model type
-    batch_sizes = batch_sizes or ([1024] if model_type == "econ" else [256])
+    batch_sizes = batch_sizes or ([1024] if model_type == "econ" else [128])
     learning_rates = learning_rates or ([0.0015625] if model_type == "econ" else [0.1])
 
     # Determine which function to use

@@ -1,5 +1,6 @@
 import brevitas.nn as qnn
 import functools
+from brevitas.core.utils import StatelessBuffer
 from copy import deepcopy
 from torch import nn
 from torch.nn import Module
@@ -45,8 +46,8 @@ def curved_model(model: Module, fix_points: List[bool]) -> Module:
             curve_module = QuantConv2d(module, fix_points)
         elif isinstance(module, qnn.QuantLinear) and hasattr(module, "quant_weight"):
             curve_module = QuantLinear(module, fix_points)
-        # elif isinstance(module, QuantNonLinearActLayer):
-        #     curve_module = QuantNLAL(module, fix_points)
+        elif isinstance(module, QuantNonLinearActLayer):
+            curve_module = QuantNLAL(module, fix_points)
         # full precision
         elif isinstance(module, nn.ConvTranspose2d):
             curve_module = ConvTranspose2D(module, fix_points)
@@ -54,9 +55,9 @@ def curved_model(model: Module, fix_points: List[bool]) -> Module:
             curve_module = Linear(module, fix_points)
         elif isinstance(module, nn.Conv2d):
             curve_module = Conv2d(module, fix_points)
-        # TODO: add quantized activations
+
         else:
-            warn(f"Layer not converted! ({name})")
+            # print(f"Layer not converted!\n({type(module)})")
             continue
         
         rsetattr(curve_model, name, curve_module)

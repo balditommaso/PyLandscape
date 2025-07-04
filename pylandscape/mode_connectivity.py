@@ -1,4 +1,5 @@
 import torch
+from brevitas.core.utils import StatelessBuffer
 from torch.types import _device
 from torch import nn, tensor
 from torch.utils.data import DataLoader
@@ -42,12 +43,12 @@ class ModeConnectivity(Metric):
         num_points: int = 30,
         max_epochs: int = 50,
         init_linear: bool = True,
+        lr_scheduler: bool = True,
         device: _device = "cpu"
     ) -> float:
         # select the curve for the interpolation
         curve = getattr(curves, curve)
         
-
         # interpolate the functions
         interpolate = Interpolate(
             curve, 
@@ -57,10 +58,16 @@ class ModeConnectivity(Metric):
             learning_rate=learning_rate,
             num_bends=num_bends,
             init_linear=init_linear,
+            lr_scheduler=lr_scheduler,
             device=device
         )
-        # train and shape the bezier curve
+        
+        for module1, module2 in zip(model1.modules(), model2.modules()):
+            if isinstance(module1, StatelessBuffer) and isinstance(module2, StatelessBuffer):
+                assert torch.allclose(module1.value, module2.value)
+        
         interpolate.train_curve(train_dataloader, max_epochs)
+        # interpolate.model = interpolate.model.to(device)
         
         # evaluate the model for each t
         ts = torch.linspace(0.0, 1.0, num_points)

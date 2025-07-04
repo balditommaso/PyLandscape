@@ -75,7 +75,7 @@ test:
   mode_connectivity:
     curve: Bezier
     num_bends: 3
-    num_points: 60
+    num_points: 2
     max_epochs: 30
   # cka:
   #   batch_size: 10

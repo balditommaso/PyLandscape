@@ -20,19 +20,24 @@ class Interpolate:
         learning_rate: float, 
         num_bends: int = 3,
         init_linear: bool = True,
+        lr_scheduler: bool = True,
         device: _device = "cpu"
     ) -> None:
-        self.model = CurveNet(curve, fix_start, num_bends)
+        # TODO: when we pass the architecture the difference metter
+        self.model = CurveNet(curve, fix_end, num_bends)
         # load parameters in the boundaries 
         self.model.import_base_parameters(fix_start, 0)
         self.model.import_base_parameters(fix_end, num_bends-1)
         if init_linear:
             self.model.init_linear()
             
+        self.start_model = fix_start
+        self.end_model = fix_end
+          
         # training 
-        # TODO: add the learning rate scheduler
         self.device = device
         self.lr = learning_rate
+        self.lr_scheduler = lr_scheduler
         self.criterion = criterion
         
     
@@ -41,7 +46,9 @@ class Interpolate:
             filter(lambda param: param.requires_grad, self.model.parameters()),
             lr=self.lr
         )
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+        scheduler = None 
+        if self.lr_scheduler:
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
         self.model = self.model.to(self.device)
         self.model.train()
         for epoch in range(epochs):
@@ -63,28 +70,36 @@ class Interpolate:
                     tepoch.set_postfix(loss=loss.item())
                     
                 loss_hist_train /= len(dataloader)
-                
-            scheduler.step() 
+            
+            if scheduler is not None:    
+                scheduler.step() 
             print(f"Epoch {epoch+1}/{epochs} - Train loss: {loss_hist_train:.4f}")
                 
     
     def sample_model(self, dataloader: DataLoader, t: float) -> None:
-        self.model.eval()
         loss_hist_test = 0
-        with torch.no_grad():
-            with tqdm(dataloader, unit="batch") as tepoch:
-                tepoch.set_description(f"Testing with t = {t.item():.4f}")
+        model = self.model.eval()
+        if t == 0.0:
+            model = self.start_model.eval()
+        if t == 1.0:
+            model = self.end_model.eval()
+        with tqdm(dataloader, unit="batch") as tepoch:
+            tepoch.set_description(f"Testing with t = {t.item():.3f}")
+            
+            for batch, target in tepoch:
+                batch, target = batch.to(self.device), target.to(self.device)
                 
-                for batch, target in tepoch:
-                    batch, target = batch.to(self.device), target.to(self.device)
-                    
-                    pred = self.model(batch, t)
-                    loss = self.criterion(pred, target)
-                    
-                    loss_hist_test += loss.item()
-                    tepoch.set_postfix(loss=loss.item())
+                if t != 0.0 and t != 1.0:
+                    pred = model(batch, t)
+                else:
+                    pred = model(batch)
+                loss = self.criterion(pred, target)
                 
+                loss_hist_test += loss.item()
+                tepoch.set_postfix(loss=loss.item())
+            
         loss_hist_test /= len(dataloader)
+            
         print(f"\n###\tTest loss: {loss_hist_test:.4f}\t###\n")
         return loss_hist_test
 

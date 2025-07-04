@@ -72,8 +72,16 @@ def main():
     models = load_models(architecture, save_dir, experiment, args.num_models, device)
     print(f"Number of model tested:\t{len(models)}")
 
+    # adjust learning rate for pre-trained CNN
+    if isinstance(data_module, dm.CIFAR10DataModule) or \
+        isinstance(data_module, dm.CIFAR100DataModule):
+        is_cifar = True
+        lr = args.lr * 0.01
+        
     # post processing required for the ECON-T model
     if isinstance(data_module, dm.AutoEncoderDataModule):
+        is_cifar = False
+        lr = args.lr
         _, val_sum = data_module.get_val_max_and_sum()
         for model in models:
             model.set_val_sum(val_sum)
@@ -84,8 +92,7 @@ def main():
     # ---------------------------------------------------------------------------- #
     #                                  BENCHMARKS                                  #
     # ---------------------------------------------------------------------------- #   
-    is_cifar = isinstance(data_module, dm.CIFAR10DataModule) or \
-        isinstance(data_module, dm.CIFAR100DataModule)
+    
     # --------------------------------- C-CIFAR-10 ------------------------------- #
     if 'noise' in config['test'] and is_cifar:
         data_path = config["test"]["noise"]["path"]
@@ -231,8 +238,6 @@ def main():
             for max_epochs in epochs:
                 # test the distance among all the combinations of models
                 for model1, model2 in combinations(models, 2):
-                    model1.eval()
-                    model2.eval()
                     mc = ModeConnectivity(device)
                     score.append(
                         mc.compute(
@@ -241,11 +246,12 @@ def main():
                             criterion=model1.criterion,
                             train_dataloader=data_module.train_dataloader(),
                             test_dataloader=data_module.test_dataloader(),
-                            learning_rate=args.lr,
+                            learning_rate=lr,
                             curve=curve,
                             num_bends=n_bend,
                             num_points=num_points,
                             max_epochs=max_epochs,
+                            lr_scheduler=is_cifar,  # CNN works well with lr scheduler
                             init_linear=True,
                             device=device
                         )
@@ -257,21 +263,21 @@ def main():
                 mc.save_on_file(save_dir)
         
     # ------------------------------------ plot ---------------------------------- #
-    if 'TDA' in config['test']:
-        cfg = config['test']['TDA']
-        lams = (cfg["min_lam"], cfg["max_lam"])
-        steps = cfg["steps"]
-        N = cfg["N"]
-        for idx, model in enumerate(models, 1):
-            plot = Surface(
-                model, 
-                model.criterion, 
-                data_module.test_dataloader(), 
-                device, seed=args.seed, 
-                name=f"plot_{steps}_{idx}"
-            )
+    # if 'TDA' in config['test']:
+    #     cfg = config['test']['TDA']
+    #     lams = (cfg["min_lam"], cfg["max_lam"])
+    #     steps = cfg["steps"]
+    #     N = cfg["N"]
+    #     for idx, model in enumerate(models, 1):
+    #         plot = Surface(
+    #             model, 
+    #             model.criterion, 
+    #             data_module.test_dataloader(), 
+    #             device, seed=args.seed, 
+    #             name=f"plot_{steps}_{idx}"
+    #         )
 
-            plot.random_hyperplane(lams, steps, N)
+    #         plot.random_hyperplane(lams, steps, N)
             
     if 'plot' in config['test']:
         cfg = config['test']['plot']
