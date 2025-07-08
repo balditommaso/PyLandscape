@@ -1,12 +1,12 @@
-save_dir: 'MobileNet_JREG_0.01'
+save_dir: 'MobileNet_JREG_0.1'
 
 # dataset config
 data:
-  name: CIFAR10DataModule
+  name: CIFAR100DataModule
   data_path: ./data/VISION/
-  num_workers: 1
+  num_workers: 2
   val_size: 0.1
-  num_classes: 10
+  num_classes: 100
 
 
 model:
@@ -15,6 +15,7 @@ model:
   quantization:
     verbose: 0
     input_quant: CommonIntActQuant
+    first_layer_bit_width: 8
     
 
 fit:
@@ -25,7 +26,7 @@ fit:
   regularizer:
     l1: 0.0
     l2: 0.0005
-    jacobian: 0.01
+    jacobian: 0.1
     parseval: 0.0
   
   # callbacks
@@ -43,7 +44,7 @@ fit:
     auto_insert_metric_name: 0
   # PL trainer config
   trainer:
-    max_epochs: 20
+    max_epochs: 100
     accelerator: gpu
     # strategy: ddp
 

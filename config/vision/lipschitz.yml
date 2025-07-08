@@ -2,11 +2,11 @@ save_dir: 'MobileNet_LIP_0.01'
 
 # dataset config
 data:
-  name: CIFAR10DataModule
+  name: CIFAR100DataModule
   data_path: ./data/VISION/
-  num_workers: 1
+  num_workers: 2
   val_size: 0.1
-  num_classes: 10
+  num_classes: 100
 
 
 model:
@@ -15,7 +15,8 @@ model:
   quantization:
     verbose: 0
     input_quant: CommonIntActQuant
-    
+    first_layer_bit_width: 8
+
 
 fit:
   # learning rate scheduler
@@ -43,7 +44,7 @@ fit:
     auto_insert_metric_name: 0
   # PL trainer config
   trainer:
-    max_epochs: 50
+    max_epochs: 100
     accelerator: gpu
     # strategy: ddp
 
