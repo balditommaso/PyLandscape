@@ -1,4 +1,4 @@
-save_dir: 'MobileNet_LIP_0.01'
+save_dir: 'MobileNet_LIP_0.0001'
 
 # dataset config
 data:
@@ -27,7 +27,7 @@ fit:
     l1: 0.0
     l2: 0.0005
     jacobian: 0.0
-    parseval: 0.01
+    parseval: 0.0001
   
   # callbacks
   # early_stopping:
@@ -51,7 +51,7 @@ fit:
 
 test:
   noise:
-    path: ./data/VISION/CIFAR-10-C/CIFAR-10-C
+    path: ./data/VISION/CIFAR-100-C/CIFAR-100-C
     num_samples: 10000
     type:
       - gaussian_noise
@@ -65,20 +65,15 @@ test:
     strategy:
       - fkeras
       - random
-  plot:
-    min_lam: -0.15
-    max_lam: 0.15
-    steps: 200
+  # plot:
+  #   min_lam: -0.15
+  #   max_lam: 0.15
+  #   steps: 200
   mode_connectivity:
     curve: Bezier
     num_bends: 3
     num_points: 60
     max_epochs: 100
-  # TDA:
-  #   N: 1
-  #   min_lam: -0.15
-  #   max_lam: 0.15
-  #   steps: 10
   cka:
     batch_size: 10
     num_outputs: 5
