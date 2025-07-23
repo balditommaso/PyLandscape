@@ -79,8 +79,7 @@ class ConvBlock(nn.Module):
         x = self.conv(x)
         x = self.bn(x)
         x = self.activation(x)
-        # if torch.isnan(x).any():
-        #     print("Not valid tensor!")
+
         return x
 
 

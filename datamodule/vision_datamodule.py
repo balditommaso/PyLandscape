@@ -266,7 +266,7 @@ class CIFAR100C(Dataset):
     C_CIFAR100_url = "https://zenodo.org/records/3555552/files/CIFAR-100-C.tar?download=1"
     C_CIFAR100_tar_path = "CIFAR-100-C.tar"
     
-    def __init__(self, root: str, corruption: str) -> None:
+    def __init__(self, root: str, corruption: str, severity: int = 1) -> None:
         self.root = root
         # normalize the images
         self.transform = transforms.Compose([
@@ -275,6 +275,9 @@ class CIFAR100C(Dataset):
             ]) 
         
         self.data, self.labels = self.load_data(corruption)
+        # slit based on the 
+        self.data = self.data[10000 * (severity-1):10000 * severity]
+        self.labels = self.labels[10000 * (severity-1):10000 * severity]
         
         
     def load_data(self, corruption: str):
@@ -403,14 +406,22 @@ class CIFAR100DataModule(pl.LightningDataModule):
         )
         
         
-    def corrupted_dataloader(self, path: str, corruption: str, num_samples: Optional[int] = None) -> DataLoader: 
-        c_dataset = CIFAR100C(path, corruption)
+    def corrupted_dataloader(
+        self, 
+        path: str, 
+        corruption: str, 
+        num_samples: Optional[int] = None,
+        severity: int = 1
+    ) -> DataLoader: 
+        if severity not in range(1, 6):
+            raise ValueError("Severity must be between [1, 5]!")
+        c_dataset = CIFAR100C(path, corruption, severity)
         assert len(c_dataset) >= num_samples, "There are no enough samples!"
         
         # take the first samples
         c_dataset = Subset(c_dataset, range(num_samples))
         # c_dataset, _ = random_split(c_dataset, [num_samples, len(c_dataset) - num_samples])
-        print(f"C-CIFAR-100 ({corruption}):\t{len(c_dataset)} sameples")
+        print(f"C-CIFAR-100 ({corruption} - {severity}):\t{len(c_dataset)} sameples")
 
         return DataLoader(
             c_dataset,

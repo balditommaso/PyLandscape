@@ -93,16 +93,23 @@ def main():
     #                                  BENCHMARKS                                  #
     # ---------------------------------------------------------------------------- #   
     
-    # --------------------------------- C-CIFAR-10 ------------------------------- #
+    # --------------------------------- C-CIFAR-100 ------------------------------- #
     if 'noise' in config['test'] and is_cifar:
         data_path = config["test"]["noise"]["path"]
         corruptions = config["test"]["noise"]["type"]
+        severities = config["test"]["noise"]["severities"]
         num_samples = config["test"]["noise"]["num_samples"]
         for corruption in corruptions:
-            c_dataloader = data_module.corrupted_dataloader(data_path, corruption, num_samples)
-            for idx, model in enumerate(models, 1):
-                test_path = os.path.join(save_dir, f"{corruption}_{idx}.txt")
-                evaluate_model(trainer, model.to(device), c_dataloader, test_path)
+            for severity in severities:
+                c_dataloader = data_module.corrupted_dataloader(
+                    data_path, 
+                    corruption, 
+                    num_samples, 
+                    severity
+                )
+                for idx, model in enumerate(models, 1):
+                    test_path = os.path.join(save_dir, f"{corruption}_{severity}_{idx}.txt")
+                    evaluate_model(trainer, model.to(device), c_dataloader, test_path)
             
     # ------------------------------------ noise --------------------------------- #
     if 'noise' in config['test'] and not is_cifar:
@@ -262,23 +269,7 @@ def main():
                 mc.results["mode_connectivity"] = score
                 mc.save_on_file(save_dir)
         
-    # ------------------------------------ plot ---------------------------------- #
-    # if 'TDA' in config['test']:
-    #     cfg = config['test']['TDA']
-    #     lams = (cfg["min_lam"], cfg["max_lam"])
-    #     steps = cfg["steps"]
-    #     N = cfg["N"]
-    #     for idx, model in enumerate(models, 1):
-    #         plot = Surface(
-    #             model, 
-    #             model.criterion, 
-    #             data_module.test_dataloader(), 
-    #             device, seed=args.seed, 
-    #             name=f"plot_{steps}_{idx}"
-    #         )
-
-    #         plot.random_hyperplane(lams, steps, N)
-            
+    # ------------------------------------ plot ---------------------------------- #            
     if 'plot' in config['test']:
         cfg = config['test']['plot']
         lams = (cfg["min_lam"], cfg["max_lam"])
@@ -294,8 +285,8 @@ def main():
             
             plot.random_line(lams, steps)
             plot.hessian_line(lams, steps)
-            plot.random_surface(lams, steps)
-            plot.hessian_surface(lams, steps)
+            # plot.random_surface(lams, steps)
+            # plot.hessian_surface(lams, steps)
   
             plot.save_on_file(save_dir)
         

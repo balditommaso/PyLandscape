@@ -13,7 +13,8 @@ DATA_PATH = '../checkpoint/'
 
 precisions = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 econ_noise_tags = ["gaussian", "salt_pepper"]
-vision_noise_tags = ["gaussian", "impulse"]
+vision_noise_tags = ["gaussian_noise", "impulse_noise"]
+vision_noise_module = [1, 2, 3, 4, 5]
 flip_strategy = ["random_bit_flip", "fkeras_bit_flip"]
 
 # plot styling
@@ -27,6 +28,7 @@ labels = {
     "JREG_0.1": "Jacobian (δ=1e-1)",
     "JREG_0.01": "Jacobian (δ=1e-2)",
     "JREG_0.001": "Jacobian (δ=1e-3)",
+    "JREG_0.005": "Jacobian (δ=5e-3)",
     "JREG_0.0001": "Jacobian (δ=1e-4)",
     "JREG_0.00001": "Jacobian (δ=1e-5)",
     "JREG_0.000001": "Jacobian (δ=1e-6)",
@@ -36,6 +38,7 @@ labels = {
     "LIP_0.01": "Orthogonality (δ=1e-2)",
     "LIP_0.001": "Orthogonality (δ=1e-3)",
     "LIP_0.0001": "Orthogonality (δ=1e-4)",
+    "LIP_0.0005": "Orthogonality (δ=5e-4)",
     "LIP_0.00001": "Orthogonality (δ=1e-5)",
     "LIP_0.000001": "Orthogonality (δ=1e-6)",
     "LIP_0.0000001": "Orthogonality (δ=1e-7)",
@@ -256,8 +259,8 @@ def load_metrics(
                     if tag != "baseline":
                         path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{tag}_{p}b")
 
-                    mc_max = get_metrics_results(path, "Bezier", "mode_connectivity", "max")
-                    mc_min = get_metrics_results(path, "Bezier", "mode_connectivity", "min")
+                    mc_max = get_metrics_results(path, "Bezier_bends_3_epochs_100", "mode_connectivity", "max")
+                    mc_min = get_metrics_results(path, "Bezier_bends_3_epochs_100", "mode_connectivity", "min")
                     max_dev = mc_max if abs(mc_max) > abs(mc_min) else mc_min
                             
                     records.append({
@@ -265,19 +268,19 @@ def load_metrics(
                         "learning_rate": lr,
                         "precision": p,
                         "regularizer": labels[tag],
-                        "CKA": get_metrics_results(path, "CKA", "CKA_similarity", "mean"),
-                        "CKA_median": get_metrics_results(path, "CKA", "CKA_similarity", "median"),
-                        "CKA_std": get_metrics_results(path, "CKA", "CKA_similarity", "std"),
-                        "CKA_max": get_metrics_results(path, "CKA", "CKA_similarity", "max"),
-                        "CKA_min": get_metrics_results(path, "CKA", "CKA_similarity", "min"),
+                        "CKA": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "mean"),
+                        "CKA_median": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "median"),
+                        "CKA_std": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "std"),
+                        "CKA_max": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "max"),
+                        "CKA_min": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "min"),
                         "Hessian trace": get_metrics_results(path, "hessian", "trace", "mean"),
                         "h_trace_max": get_metrics_results(path, "hessian", "trace", "max"),
                         "h_trace_std": get_metrics_results(path, "hessian", "trace", "std"),
                         "Top eigenvalue": get_metrics_results(path, "hessian", "eigenvalue", "mean"),
                         "top_eigen_max": get_metrics_results(path, "hessian", "eigenvalue", "max"),
-                        "top_eigen_std": get_metrics_results(path, "Bezier", "mode_connectivity", "mean"),
-                        "mc_median": get_metrics_results(path, "Bezier", "mode_connectivity", "median"),
-                        "mc_std": get_metrics_results(path, "Bezier", "mode_connectivity", "std"),
+                        "top_eigen_std": get_metrics_results(path, "hessian", "eigenvalue", "std"),
+                        "mc_median": get_metrics_results(path, "Bezier_bends_3_epochs_100", "mode_connectivity", "median"),
+                        "mc_std": get_metrics_results(path, "Bezier_bends_3_epochs_100", "mode_connectivity", "std"),
                         "max mc": max_dev
                     })
                     
@@ -356,17 +359,19 @@ def load_benchmarks(
                                         f"min {result_key}": get_results(path, f"{noise_tag}_{module}", aggregate="min", key=result_key, verbose=verbose),
                                     })
                             else:
-                                records.append({
-                                    "batch_size": bs,
-                                    "learning_rate": lr,
-                                    "precision": p,
-                                    "regularizer": labels[tag],
-                                    "noise_type": noise_tag,
-                                    result_key: get_results(path, noise_tag, aggregate="mean", key=result_key, verbose=verbose),
-                                    f"{result_key} std": get_results(path, noise_tag, aggregate="std", key=result_key, verbose=verbose),
-                                    f"max {result_key}": get_results(path, noise_tag, aggregate="max", key=result_key, verbose=verbose),
-                                    f"min {result_key}": get_results(path, noise_tag, aggregate="min", key=result_key, verbose=verbose),
-                                })
+                                for severity in vision_noise_module:
+                                    records.append({
+                                        "batch_size": bs,
+                                        "learning_rate": lr,
+                                        "precision": p,
+                                        "regularizer": labels[tag],
+                                        "noise_type": noise_tag,
+                                        "Noise Severity": severity,
+                                        result_key: get_results(path, f"{noise_tag}_{severity}", aggregate="mean", key=result_key, verbose=verbose),
+                                        f"{result_key} std": get_results(path, f"{noise_tag}_{severity}", aggregate="std", key=result_key, verbose=verbose),
+                                        f"max {result_key}": get_results(path, f"{noise_tag}_{severity}", aggregate="max", key=result_key, verbose=verbose),
+                                        f"min {result_key}": get_results(path, f"{noise_tag}_{severity}", aggregate="min", key=result_key, verbose=verbose),
+                                    })
                                     
                     # bit flipping
                     elif num_bits and flip_strategies:
