@@ -1,4 +1,4 @@
-save_dir: 'MobileNet_JREG_0.001'
+save_dir: 'VGG_16_JREG_0.001'
 
 # dataset config
 data:
@@ -16,6 +16,7 @@ model:
     verbose: 0
     input_quant: CommonIntActQuant
     first_layer_bit_width: 8
+    act_channel_wise: False   # True, for mobilenet
     
 
 fit:
@@ -44,7 +45,7 @@ fit:
     auto_insert_metric_name: 0
   # PL trainer config
   trainer:
-    max_epochs: 100
+    max_epochs: 50
     accelerator: gpu
     # strategy: ddp
 

@@ -30,6 +30,7 @@ AVAILABLE_MODELS = {
 class VisionModel(pl.LightningModule):
     def __init__(self,
         config: Union[str, dict],
+        architecture: str,
         quantized: bool, 
         learning_rate: float,
         bit_width: int = 32,
@@ -50,10 +51,10 @@ class VisionModel(pl.LightningModule):
         self.save_hyperparameters()
         self.bit_width = bit_width
         
-        if config["save_dir"] not in AVAILABLE_MODELS:
+        if architecture not in AVAILABLE_MODELS:
             raise ValueError(f"The model {config['save_dir']} is not yet available!")
         
-        self.model = AVAILABLE_MODELS[config["save_dir"]](config['data']['num_classes'])
+        self.model = AVAILABLE_MODELS[architecture](config['data']['num_classes'])
         
         self.criterion = nn.CrossEntropyLoss(
             label_smoothing=config["fit"]["label_smoothing"]
