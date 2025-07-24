@@ -16,6 +16,7 @@ model:
     verbose: 0
     input_quant: CommonIntActQuant
     first_layer_bit_width: 8
+    act_channel_wise: True   # True, for mobilenet
 
 fit:
   # learning rate scheduler

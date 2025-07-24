@@ -103,7 +103,6 @@ def main():
         quantized=args.precision < 32,
         bit_width=args.precision,
         learning_rate=args.lr,
-        pretrained=args.pretrained
     )
     if not hasattr(models, model_cfg["name"]):
         raise ValueError(f"Not Valid model: {model_cfg['name']} ")
@@ -112,7 +111,7 @@ def main():
     
     # load the data from the full precision version
     if args.pretrained:
-        full_precision_ckpt = config["save_dir"].split("_")[0]
+        full_precision_ckpt = config["save_dir"]
         model_ckpt = os.path.join(
             args.saving_folder, 
             f"{full_precision_ckpt}_32b/"
@@ -121,10 +120,10 @@ def main():
         )
         
         # walk-around to handle downloaded models
-        if config["save_dir"].startswith("MobileNet") and not os.path.exists(model_ckpt):
-            pl_model = architecture(**model_args)
-            trainer.validate(pl_model, data_module.test_dataloader(), verbose=False)
-            trainer.save_checkpoint(model_ckpt)
+        # if (config["save_dir"].startswith("MobileNet") or config["save_dir"].startswith("VGG")) and not os.path.exists(model_ckpt):
+        #     pl_model = architecture(**model_args)
+        #     trainer.validate(pl_model, data_module.test_dataloader(), verbose=False)
+        #     trainer.save_checkpoint(model_ckpt)
         
         print(f"Loading the model from:\n\t{model_ckpt}")
         if not os.path.exists(model_ckpt):

@@ -45,13 +45,13 @@ def apply_quantization(model: nn.Module, bit_width: int, config: Dict[str, Any])
         act_bit_width=config.get('act_bit_width', None),
         input_quant=input_quant,
         verbose=config.get('verbose', False),
+        act_channel_wise=config.get('act_channel_wise', True)
     )
-    # self.model = fold_bn_layers(self.model)
+
     return quantize_model(
         model, 
         bit_width, 
         fold_quant_input=False,
-        vision=True, 
         **config
     )
 

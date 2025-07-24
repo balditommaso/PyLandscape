@@ -48,7 +48,7 @@ def quantize_model(
     first_layer_bit_width: Optional[int] = None,
     act_bit_width: Optional[int] = None,
     input_quant: ActQuantType = CommonIntActQuant,
-    vision: bool = False,
+    act_channel_wise: bool = False,
     fold_quant_input: bool = True,
     verbose: bool = True
 ) -> nn.Module:
@@ -142,7 +142,7 @@ def quantize_model(
         elif isinstance(module, nn.ReLU):
             act_config = {}
             # special activation config for mobilenet
-            if vision:
+            if act_channel_wise and isinstance(prev_module, nn.Conv2d):
                 out_channels = prev_module.out_channels
                 scaling_per_output_channels = True
                 if "dw_conv" in name or "stage5" in name:

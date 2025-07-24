@@ -5,9 +5,9 @@ Modified from: https://github.com/Xilinx/brevitas/blob/master/src/brevitas_examp
 import requests
 import pytorch_lightning as pl
 import torch
-from typing import Union
+from typing import Union, Tuple
 from brevitas import config
-from torch import nn, hub
+from torch import nn, tensor
 from torch.nn import Sequential
 from torch.optim import SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR, CosineAnnealingLR, OneCycleLR
@@ -16,143 +16,16 @@ from .quantization import *
 from .utils import *
 from benchmarks.lipschitz import lipschitz_regularizer as lipReg
 from benchmarks.jacobian import JacobianReg as jReg
-from .utils import yaml_load
+from .vgg import VGG_11, VGG_16
+from .mobilenet import mobilenet_v1
 
 config.IGNORE_MISSING_KEYS = True
 
-
-
-class DwsConvBlock(nn.Module):
-
-    def __init__(self, in_channels, out_channels, stride) -> nn.Module:
-        super(DwsConvBlock, self).__init__()
-        self.dw_conv = ConvBlock(
-            in_channels=in_channels,
-            out_channels=in_channels,
-            groups=in_channels,
-            kernel_size=3,
-            padding=1,
-            stride=stride,
-        )
-        self.pw_conv = ConvBlock(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=1,
-            padding=0,
-        )
-
-
-    def forward(self, x):
-        x = self.dw_conv(x)
-        x = self.pw_conv(x)
-        return x
-
-
-
-class ConvBlock(nn.Module):
-
-    def __init__(
-        self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        groups=1,
-        bn_eps=1e-5,
-    ) -> nn.Module:
-        super(ConvBlock, self).__init__()
-        self.conv = nn.Conv2d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            groups=groups,
-            bias=False
-        )
-        self.bn = nn.BatchNorm2d(num_features=out_channels, eps=bn_eps)
-        self.activation = nn.ReLU()
-
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.bn(x)
-        x = self.activation(x)
-
-        return x
-
-
-
-class MobileNet(nn.Module):
-
-    def __init__(
-        self,
-        channels,
-        first_stage_stride,
-        first_layer_stride=2,
-        in_channels=3,
-        num_classes=10
-    ) -> nn.Module:
-        super(MobileNet, self).__init__()
-        init_block_channels = channels[0][0]
-
-        self.features = Sequential()
-        init_block = ConvBlock(
-            in_channels=in_channels,
-            out_channels=init_block_channels,
-            kernel_size=3,
-            stride=first_layer_stride
-        )
-        self.features.add_module('init_block', init_block)
-        in_channels = init_block_channels
-        for i, channels_per_stage in enumerate(channels[1:]):
-            stage = Sequential()
-            for j, out_channels in enumerate(channels_per_stage):
-                stride = 2 if (j == 0) and ((i != 0) or first_stage_stride) else 1
-                mod = DwsConvBlock(
-                    in_channels=in_channels,
-                    out_channels=out_channels,
-                    stride=stride,
-                )
-                stage.add_module('unit{}'.format(j + 1), mod)
-                in_channels = out_channels
-            self.features.add_module('stage{}'.format(i + 1), stage)
-        self.final_pool = nn.AdaptiveAvgPool2d(1)
-        self.flatten = nn.Flatten()
-        self.output = nn.Linear(in_channels, num_classes, bias=True)
-
-
-    def forward(self, x):
-        x = self.features(x)
-        x = self.final_pool(x)
-        x = self.flatten(x)
-        out = self.output(x)
-        return out
-
-
-
-def mobilenet_v1(num_classes: int, pretrained: bool):
-    channels = [
-        [32], 
-        [64], 
-        [128, 128], 
-        [256, 256], 
-        [512, 512, 512, 512, 512, 512], 
-        [1024, 1024]
-    ]
-    first_stage_stride = False
-    first_layer_stride = 1
-    net = MobileNet(
-        channels=channels, 
-        first_stage_stride=first_stage_stride, 
-        first_layer_stride=first_layer_stride,
-        num_classes=num_classes
-    )
-
-    return net
-
-
+AVAILABLE_MODELS = {
+    "MobileNet": mobilenet_v1,
+    "VGG_11": VGG_11,
+    "VGG_16": VGG_16,
+}
 
 class VisionModel(pl.LightningModule):
     def __init__(self,
@@ -160,7 +33,7 @@ class VisionModel(pl.LightningModule):
         quantized: bool, 
         learning_rate: float,
         bit_width: int = 32,
-        pretrained: bool = False,
+        pretrained: bool = True,
         *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -176,10 +49,11 @@ class VisionModel(pl.LightningModule):
         self.quantized = quantized
         self.save_hyperparameters()
         self.bit_width = bit_width
-        self.model = mobilenet_v1(
-            num_classes=config['data']['num_classes'], 
-            pretrained=pretrained, 
-        )
+        
+        if config["save_dir"] not in AVAILABLE_MODELS:
+            raise ValueError(f"The model {config['save_dir']} is not yet available!")
+        
+        self.model = AVAILABLE_MODELS[config["save_dir"]](config['data']['num_classes'])
         
         self.criterion = nn.CrossEntropyLoss(
             label_smoothing=config["fit"]["label_smoothing"]
