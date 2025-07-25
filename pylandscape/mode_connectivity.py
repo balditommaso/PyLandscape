@@ -1,5 +1,4 @@
 import torch
-from brevitas.core.utils import StatelessBuffer
 from torch.types import _device
 from torch import nn, tensor
 from torch.utils.data import DataLoader
@@ -62,12 +61,7 @@ class ModeConnectivity(Metric):
             device=device
         )
         
-        for module1, module2 in zip(model1.modules(), model2.modules()):
-            if isinstance(module1, StatelessBuffer) and isinstance(module2, StatelessBuffer):
-                assert torch.allclose(module1.value, module2.value)
-        
         interpolate.train_curve(train_dataloader, max_epochs)
-        # interpolate.model = interpolate.model.to(device)
         
         # evaluate the model for each t
         ts = torch.linspace(0.0, 1.0, num_points)
