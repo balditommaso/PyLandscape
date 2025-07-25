@@ -1,4 +1,4 @@
-save_dir: 'MobileNet_LIP_0.0001'
+save_dir: 'VGG_16_LIP_0.0001'
 
 # dataset config
 data:
@@ -16,6 +16,7 @@ model:
     verbose: 0
     input_quant: CommonIntActQuant
     first_layer_bit_width: 8
+    act_channel_wise: False   # True, for mobilenet
 
 
 fit:
@@ -29,13 +30,6 @@ fit:
     jacobian: 0.0
     parseval: 0.0001
   
-  # callbacks
-  # early_stopping:
-  #   monitor: val_loss 
-  #   min_delta: 0.005 
-  #   patience: 50  # removing the early stopping
-  #   verbose: 1
-  #   mode: min
   model_checkpoint:
     save_top_k: 1
     save_last: 0
@@ -50,44 +44,45 @@ fit:
 
 
 test:
-  # noise:
-  #   path: ./data/VISION/CIFAR-100-C/CIFAR-100-C
-  #   num_samples: 10000
-  #   type:
-  #     - gaussian_noise
-  #     - impulse_noise
-  #     # - spatter
-  #     # - gaussian_blur
-  #   severities:
-  #     - 1
-  #     - 2
-  #     - 3
-  #     - 4 
-  #     - 5
-  # bit_flip:
-  #   n_bits:
-  #     - 1
-  #     - 5
-  #     - 10
-  #     - 20
-  #   strategy:
-  #     - fkeras
-  #     - random
+  noise:
+    path: ./data/VISION/CIFAR-100-C/CIFAR-100-C
+    num_samples: 10000
+    type:
+      - gaussian_noise
+      - impulse_noise
+    severities:
+      - 1
+      - 2
+      - 3
+      - 4 
+      - 5
+  bit_flip:
+    n_bits:
+      - 1
+      - 5
+      - 10
+      - 20
+      - 50
+      - 100
+      - 150
+      - 200
+    strategy:
+      - fkeras
+      - random
   plot:
-    min_lam: -0.15
-    max_lam: 0.15
-    steps: 200
-  # mode_connectivity:
-  #   curve: Bezier
-  #   num_bends: 3
-  #   num_points: 60
-  #   max_epochs: 50
-  # cka:
-  #   batch_size: 10
-  #   num_outputs:
-  #     - 10
-  #   num_runs: 1
-  # hessian:
-  #   n_iter: 100
-  #   top_n: 1
+    min_lam: -0.3
+    max_lam: 0.3
+    steps: 400
+  mode_connectivity:
+    curve: Bezier
+    num_bends: 3
+    num_points: 60
+    max_epochs: 50
+  cka:
+    batch_size: 10
+    num_outputs: 10
+    num_runs: 1
+  hessian:
+    n_iter: 100
+    top_n: 1
 
