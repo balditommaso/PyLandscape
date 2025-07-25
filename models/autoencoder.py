@@ -89,6 +89,7 @@ class AutoEncoder(pl.LightningModule):
     def __init__(
         self, 
         config: Union[str, dict],
+        architecture: str,
         quantized: bool,
         learning_rate: float, 
         bit_width: int = 32,
