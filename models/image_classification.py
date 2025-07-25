@@ -2,13 +2,10 @@
 """
 Modified from: https://github.com/Xilinx/brevitas/blob/master/src/brevitas_examples/imagenet_classification/models/mobilenetv1.py
 """
-import requests
 import pytorch_lightning as pl
-import torch
-from typing import Union, Tuple
+from typing import Union
 from brevitas import config
-from torch import nn, tensor
-from torch.nn import Sequential
+from torch import nn
 from torch.optim import SGD
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR, CosineAnnealingLR, OneCycleLR
 from torchmetrics import Accuracy
@@ -23,8 +20,8 @@ config.IGNORE_MISSING_KEYS = True
 
 AVAILABLE_MODELS = {
     "MobileNet": mobilenet_v1,
-    "VGG_11": VGG_11,
-    "VGG_16": VGG_16,
+    "VGG11": VGG_11,
+    "VGG16": VGG_16,
 }
 
 class VisionModel(pl.LightningModule):

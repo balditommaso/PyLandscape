@@ -1,4 +1,4 @@
-save_dir: 'VGG_16_JREG_0.001'
+save_dir: 'VGG16_JREG_0.001'
 
 # dataset config
 data:
