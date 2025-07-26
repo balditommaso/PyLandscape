@@ -94,10 +94,11 @@ class QuantLinear(CurveModule):
             self.module, "weight", CurveWeightComputation(self.compute_weights_t, 0)
         )
         self.module.parametrizations.weight.original.requires_grad = False
-        register_parametrization(
-            self.module, "bias", CurveWeightComputation(self.compute_weights_t, 1)
-        )   
-        self.module.parametrizations.bias.original.requires_grad = False
+        if hasattr(self.module, "bias") and self.module.bias is not None:
+            register_parametrization(
+                self.module, "bias", CurveWeightComputation(self.compute_weights_t, 1)
+            )   
+            self.module.parametrizations.bias.original.requires_grad = False
         
         
     def reset_parameters(self) -> None:
@@ -153,10 +154,11 @@ class QuantConv2d(CurveModule):
             self.module, "weight", CurveWeightComputation(self.compute_weights_t, 0)
         )
         self.module.parametrizations.weight.original.requires_grad = False
-        register_parametrization(
-            self.module, "bias", CurveWeightComputation(self.compute_weights_t, 1)
-        )
-        self.module.parametrizations.bias.original.requires_grad = False
+        if hasattr(self.module, "bias") and self.module.bias is not None:
+            register_parametrization(
+                self.module, "bias", CurveWeightComputation(self.compute_weights_t, 1)
+            )
+            self.module.parametrizations.bias.original.requires_grad = False
         
         
     def reset_parameters(self) -> None:
