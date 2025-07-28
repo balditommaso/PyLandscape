@@ -52,11 +52,13 @@ def fusion_model(filters_conv: List[int], neurons_dense: List[int]) -> nn.Module
 
 class FusionControl(pl.LightningModule):
     def __init__(self, 
-            config: Union[str, dict],
-            quantized: bool, 
-            learning_rate: float,
-            bit_width: int=32,
-            *args, **kwargs) -> None:
+        config: Union[str, dict],
+        architecture: str,
+        quantized: bool, 
+        learning_rate: float,
+        bit_width: int=32,
+        *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         # load the config from yaml file
         if isinstance(config, str):
@@ -193,11 +195,12 @@ class FusionControl(pl.LightningModule):
         phase_pred = phase_pred * 180 / torch.pi
         # store the amplitude and phase error distribution
         if hasattr(self.logger, "log_dir"):
-            df = pd.DataFrame(np.vstack((ampl_target.detach().cpu().numpy(), 
-                                         phase_target.detach().cpu().numpy(), 
-                                         ampl_pred.detach().cpu().numpy(), 
-                                         phase_pred.detach().cpu().numpy())).T, 
-                                columns=['true_ampl', 'true_phase', 'pred_ampl', 'pred_phase'])
+            df = pd.DataFrame(np.vstack(
+                (ampl_target.detach().cpu().numpy(), 
+                 phase_target.detach().cpu().numpy(), 
+                 ampl_pred.detach().cpu().numpy(), 
+                 phase_pred.detach().cpu().numpy())).T, 
+                columns=['true_ampl', 'true_phase', 'pred_ampl', 'pred_phase'])
             pd.to_pickle(df, os.path.join(f"{self.logger.log_dir}/../", f"error_distribution.pkl"))
 
             # Apply filtering: Select elements of `true_ampl` between HIGH_AMPL_THRESHOLD and 30

@@ -1,0 +1,80 @@
+save_dir: 'FUSION_LIP_0.000001'
+
+# dataset config
+data:
+  name: FusionDataModule
+  data_path: ../data/FUSION/
+  num_workers: 0
+  val_size: 0.1
+  cache: 1
+  standardize: 0
+
+
+model:
+  name: FusionControl
+  quantization:
+    verbose: 0
+    input_quant: CommonUintActQuant
+
+fit:
+  # learning rate scheduler
+  lr_scheduler: step
+  # regularization during training
+  regularizer:
+    l1: 0.0
+    l2: 0.0
+    jacobian: 0.0   
+    parseval: 0.000001 # test different values 
+  
+
+  model_checkpoint:
+    save_top_k: 1
+    save_last: 0
+    monitor: val_loss 
+    mode: min
+    auto_insert_metric_name: 0
+  # PL trainer config
+  trainer:
+    max_epochs: 50
+
+
+
+test:
+  noise:
+    type:
+      - gaussian
+      - salt_pepper
+    percentage:
+      - 1
+      - 5
+      - 10
+      - 15
+      - 20
+      - 50
+  bit_flip:
+    n_bits:
+      - 1
+      - 5
+      - 10
+      - 20
+    strategy:
+      - fkeras
+      - random
+  plot:
+    min_lam: -0.15
+    max_lam: 0.15
+    steps: 200
+  mode_connectivity:
+    curve: Bezier
+    num_bends: 3
+    num_points: 2
+    max_epochs: 50
+  cka:
+    batch_size: 10
+    num_outputs: 
+      - 5
+      - 10
+    num_runs: 1
+  hessian:
+    n_iter: 100
+    top_n: 1

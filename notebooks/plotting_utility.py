@@ -11,7 +11,13 @@ from typing import Optional, Tuple, List
 # ---------------------------------------------------------------------------- #
 DATA_PATH = '../checkpoint/'
 
-precisions = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+performance_metric = {
+    "ECON": "AVG_EMD",
+    "VGG16": "test_top1_acc",
+    "MobileNet": "test_top1_acc"
+}
+
+precisions = [4, 5, 6, 7, 8, 9, 10, 11, 12]
 econ_noise_tags = ["gaussian", "salt_pepper"]
 vision_noise_tags = ["gaussian_noise", "impulse_noise"]
 vision_noise_module = [1, 2, 3, 4, 5]
@@ -213,12 +219,13 @@ def get_metrics_results(dir_path: str, file_tag: str, key: str, aggregate: str =
                     results.append(res)
             # aggregate the results
             return getattr(np, aggregate)(results)
-        # just one file found
-        data = load_from_pickle(dir_path, result_files[0])
-        res = data[key]
-        if isinstance(res, list) and len(res) > 1:
-            # aggregate the results
-            return getattr(np, aggregate)(res)
+        if len(result_files) == 1:
+            # just one file found
+            data = load_from_pickle(dir_path, result_files[0])
+            res = data[key]
+            if isinstance(res, list) and len(res) > 1:
+                # aggregate the results
+                return getattr(np, aggregate)(res)
         
         print(f"Aggregation not used for {file_tag} - {key}")
         return res
@@ -240,11 +247,21 @@ def load_metrics(
     tags: List[str],
     batch_sizes: List[int] = None,
     learning_rates: List[float] = None,
+    cka_samples: int = 5,
+    mc_epochs: int = 100,
+    mc_bends: int = 3,
     verbose: bool = False
 ) -> None:
-        # Default parameters based on model type
-    batch_sizes = batch_sizes or ([1024] if model_type == "econ" else [128])
-    learning_rates = learning_rates or ([0.0015625] if model_type == "econ" else [0.1])
+    # Default parameters based on model type
+    if isinstance(batch_sizes, int):
+        batch_sizes = [batch_sizes]
+    if isinstance(learning_rates, float):
+        learning_rates = [learning_rates]
+
+    # Determine which function to use
+    if model_type not in performance_metric:
+        raise ValueError("Not available model!")
+    
     # store the results
     records = []
     for p in precisions:
@@ -253,14 +270,13 @@ def load_metrics(
                 for tag in tags:
                     # build the path
                     base_path = f"bs{bs}_lr{lr}/"
-                    model_prefix = "ECON" if "econ" in model_type else "MobileNet"
-                    path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{p}b")
+                    path = os.path.join(DATA_PATH, f"{base_path}{model_type}_{p}b")
 
                     if tag != "baseline":
-                        path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{tag}_{p}b")
+                        path = os.path.join(DATA_PATH, f"{base_path}{model_type}_{tag}_{p}b")
 
-                    mc_max = get_metrics_results(path, "Bezier_bends_3_epochs_100", "mode_connectivity", "max")
-                    mc_min = get_metrics_results(path, "Bezier_bends_3_epochs_100", "mode_connectivity", "min")
+                    mc_max = get_metrics_results(path, f"Bezier_bends_{mc_bends}_epochs_{mc_epochs}", "mode_connectivity", "max")
+                    mc_min = get_metrics_results(path, f"Bezier_bends_{mc_bends}_epochs_{mc_epochs}", "mode_connectivity", "min")
                     max_dev = mc_max if abs(mc_max) > abs(mc_min) else mc_min
                             
                     records.append({
@@ -268,19 +284,19 @@ def load_metrics(
                         "learning_rate": lr,
                         "precision": p,
                         "regularizer": labels[tag],
-                        "CKA": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "mean"),
-                        "CKA_median": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "median"),
-                        "CKA_std": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "std"),
-                        "CKA_max": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "max"),
-                        "CKA_min": get_metrics_results(path, "CKA_similarity_5", "CKA_similarity", "min"),
+                        "CKA": get_metrics_results(path, f"CKA_similarity_{cka_samples}", "CKA_similarity", "mean"),
+                        "CKA_median": get_metrics_results(path, f"CKA_similarity_{cka_samples}", "CKA_similarity", "median"),
+                        "CKA_std": get_metrics_results(path, f"CKA_similarity_{cka_samples}", "CKA_similarity", "std"),
+                        "CKA_max": get_metrics_results(path, f"CKA_similarity_{cka_samples}", "CKA_similarity", "max"),
+                        "CKA_min": get_metrics_results(path, f"CKA_similarity_{cka_samples}", "CKA_similarity", "min"),
                         "Hessian trace": get_metrics_results(path, "hessian", "trace", "mean"),
                         "h_trace_max": get_metrics_results(path, "hessian", "trace", "max"),
                         "h_trace_std": get_metrics_results(path, "hessian", "trace", "std"),
                         "Top eigenvalue": get_metrics_results(path, "hessian", "eigenvalue", "mean"),
                         "top_eigen_max": get_metrics_results(path, "hessian", "eigenvalue", "max"),
                         "top_eigen_std": get_metrics_results(path, "hessian", "eigenvalue", "std"),
-                        "mc_median": get_metrics_results(path, "Bezier_bends_3_epochs_100", "mode_connectivity", "median"),
-                        "mc_std": get_metrics_results(path, "Bezier_bends_3_epochs_100", "mode_connectivity", "std"),
+                        "mc_median": get_metrics_results(path, f"Bezier_bends_{mc_bends}_epochs_{mc_epochs}", "mode_connectivity", "median"),
+                        "mc_std": get_metrics_results(path, f"Bezier_bends_{mc_bends}_epochs_{mc_epochs}", "mode_connectivity", "std"),
                         "max mc": max_dev
                     })
                     
@@ -302,15 +318,20 @@ def load_benchmarks(
     verbose: bool = False
 ) -> None:
     # Default parameters based on model type
-    batch_sizes = batch_sizes or ([1024] if model_type == "econ" else [128])
-    learning_rates = learning_rates or ([0.0015625] if model_type == "econ" else [0.1])
+    if isinstance(batch_sizes, int):
+        batch_sizes = [batch_sizes]
+    if isinstance(learning_rates, float):
+        learning_rates = [learning_rates]
 
     # Determine which function to use
-    result_key = "test_top1_acc" if model_type != "econ" else "AVG_EMD"
+    if model_type not in performance_metric:
+        raise ValueError("Not available model!")
+    
+    result_key = performance_metric[model_type]
 
     # Define noise tags based on model type
     noise_tags = (
-        econ_noise_tags if model_type == "econ" else vision_noise_tags
+        econ_noise_tags if model_type == "ECON" else vision_noise_tags
     )
 
     # Store results
@@ -321,11 +342,10 @@ def load_benchmarks(
                 for tag in tags:
                     # Construct the base path
                     base_path = f"bs{bs}_lr{lr}/"
-                    model_prefix = "ECON" if "econ" in model_type else "MobileNet"
-                    path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{p}b")
+                    path = os.path.join(DATA_PATH, f"{base_path}{model_type}_{p}b")
 
                     if tag != "baseline":
-                        path = os.path.join(DATA_PATH, f"{base_path}{model_prefix}_{tag}_{p}b")
+                        path = os.path.join(DATA_PATH, f"{base_path}{model_type}_{tag}_{p}b")
 
                     # Handle different result types
                     if not flip_strategies:
@@ -344,7 +364,7 @@ def load_benchmarks(
 
                         # Add noisy cases
                         for noise_tag in noise_tags:
-                            if noise_modules and model_type == "econ":
+                            if noise_modules and model_type == "ECON":
                                 for module in noise_modules:
                                     records.append({
                                         "batch_size": bs,
