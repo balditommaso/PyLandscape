@@ -72,6 +72,7 @@ def main():
     models = load_models(architecture, save_dir, experiment, args.num_models, device)
     print(f"Number of model tested:\t{len(models)}")
 
+    is_cifar = False
     # adjust learning rate for pre-trained CNN
     if isinstance(data_module, dm.CIFAR10DataModule) or \
         isinstance(data_module, dm.CIFAR100DataModule):
@@ -79,8 +80,7 @@ def main():
         lr = args.lr * 0.01
         
     # post processing required for the ECON-T model
-    if isinstance(data_module, dm.AutoEncoderDataModule):
-        is_cifar = False
+    if isinstance(data_module, dm.AutoEncoderDataModule): 
         lr = args.lr
         _, val_sum = data_module.get_val_max_and_sum()
         for model in models:
