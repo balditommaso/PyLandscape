@@ -7,6 +7,13 @@ from torch.nn import Module, Parameter
 from typing import Tuple, List, Callable
 
 
+def safe_getattr(obj, attr_path, default=None):
+    for attr in attr_path.split('.'):
+        try:
+            obj = getattr(obj, attr)
+        except AttributeError:
+            return default
+    return obj
 
 class Coeffs_t:
     """
@@ -120,7 +127,7 @@ class QuantLinear(CurveModule):
 class QuantConv2d(CurveModule):
     
     def __init__(self, module: nn.Module, fix_points: List[bool]) -> None:
-        CurveModule.__init__(self, fix_points, ("weight", "bias"))
+        CurveModule.__init__(self, fix_points, ("weight",))
 
         if module.in_channels % module.groups != 0:
             raise ValueError("in_channels must be divisible by groups")
@@ -139,26 +146,48 @@ class QuantConv2d(CurveModule):
                     requires_grad=not fixed
                 )
             )
+            # register the bias if present
             if module.bias is not None:
+                self.parameter_names += ("bias",)
                 self.register_parameter(
-                    "bias_%d" % i,
+                    f"bias_{i}",
                     Parameter(torch.Tensor(module.out_channels), requires_grad=not fixed)
                 )
-            else:
-                self.register_parameter("bias_%d" % i, None)
-
+            # else:
+            #     self.register_parameter("bias_%d" % i, None)
+            # register input quantization
+            value = safe_getattr(module, "input_quant.fused_activation_quant_proxy.tensor_quant.scaling_impl.value")
+            if value is not None:                
+                self.parameter_names += ("value",)
+                self.register_parameter(
+                    f"value_{i}",
+                    Parameter(torch.Tensor(value), requires_grad=not fixed)
+                )
+                
         self.module = module
         self.reset_parameters()
+        t = 0
         # add parametrization of the weight
         register_parametrization(
-            self.module, "weight", CurveWeightComputation(self.compute_weights_t, 0)
+            self.module, "weight", CurveWeightComputation(self.compute_weights_t, t)
         )
         self.module.parametrizations.weight.original.requires_grad = False
+        # add parametrization bias if needed
         if hasattr(self.module, "bias") and self.module.bias is not None:
+            t += 1
             register_parametrization(
-                self.module, "bias", CurveWeightComputation(self.compute_weights_t, 1)
+                self.module, "bias", CurveWeightComputation(self.compute_weights_t, t)
             )
             self.module.parametrizations.bias.original.requires_grad = False
+        # add parametrization activation if needed
+        if value is not None:
+            t += 1
+            register_parametrization(
+                self.module.input_quant.fused_activation_quant_proxy.tensor_quant.scaling_impl, 
+                "value", 
+                CurveWeightComputation(self.compute_weights_t, t)
+            )
+            self.module.input_quant.fused_activation_quant_proxy.tensor_quant.scaling_impl.parametrizations.value.original.requires_grad = False
         
         
     def reset_parameters(self) -> None:
@@ -191,7 +220,7 @@ class QuantNLAL(CurveModule):
             )
 
         self.module = module
-        # add parametrization of the weight
+        # add parametrization of the activation
         register_parametrization(
             self.module.act_quant.fused_activation_quant_proxy.tensor_quant.scaling_impl, 
             "value", 
