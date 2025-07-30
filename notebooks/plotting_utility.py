@@ -13,6 +13,7 @@ DATA_PATH = '../checkpoint/'
 
 performance_metric = {
     "ECON": "AVG_EMD",
+    "FUSION": "ampl_mae",
     "VGG16": "test_top1_acc",
     "MobileNet": "test_top1_acc"
 }
@@ -331,7 +332,7 @@ def load_benchmarks(
 
     # Define noise tags based on model type
     noise_tags = (
-        econ_noise_tags if model_type == "ECON" else vision_noise_tags
+        econ_noise_tags if model_type in ["ECON", "FUSION"] else vision_noise_tags
     )
 
     # Store results
@@ -347,7 +348,7 @@ def load_benchmarks(
                     if tag != "baseline":
                         path = os.path.join(DATA_PATH, f"{base_path}{model_type}_{tag}_{p}b")
 
-                    # Handle different result types
+                    # handle different result types
                     if not flip_strategies:
                         file_tag = "noise.csv"
                         records.append({
@@ -362,9 +363,9 @@ def load_benchmarks(
                             f"min {result_key}": get_results(path, aggregate="min", key=result_key, verbose=verbose),
                         })
 
-                        # Add noisy cases
+                        # add noisy cases
                         for noise_tag in noise_tags:
-                            if noise_modules and model_type == "ECON":
+                            if noise_modules and model_type in ["ECON", "FUSION"]:
                                 for module in noise_modules:
                                     records.append({
                                         "batch_size": bs,

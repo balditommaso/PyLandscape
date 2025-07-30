@@ -78,10 +78,10 @@ def main():
         isinstance(data_module, dm.CIFAR100DataModule):
         is_cifar = True
         lr = args.lr * 0.01
-        
+    
+    lr = args.lr  
     # post processing required for the ECON-T model
     if isinstance(data_module, dm.AutoEncoderDataModule): 
-        lr = args.lr
         _, val_sum = data_module.get_val_max_and_sum()
         for model in models:
             model.set_val_sum(val_sum)
