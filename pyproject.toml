@@ -2,7 +2,7 @@
 name = "pylandscape"
 version = "0.0.0"
 description = "Python package to explore the loss landscape of Machine Learning models"
-authors = ["Tommaso Baldi <tommaso.baldi@santannapisa.it>"]
+authors = ["Tommaso Baldi"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/balditommaso/PyLandscape"
