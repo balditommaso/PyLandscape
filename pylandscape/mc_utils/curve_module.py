@@ -44,7 +44,6 @@ class CurveModule(Module):
     Class used as base to be extended by all curved version of other modules. 
     """
     def __init__(self, fix_points: List[bool], parameter_names: Tuple[str] = ()) -> None:
-        # super(CurveModule, self).__init__()
         Module.__init__(self)
         self.fix_points = fix_points
         self.num_bends = len(self.fix_points)
@@ -153,8 +152,6 @@ class QuantConv2d(CurveModule):
                     f"bias_{i}",
                     Parameter(torch.Tensor(module.out_channels), requires_grad=not fixed)
                 )
-            # else:
-            #     self.register_parameter("bias_%d" % i, None)
             # register input quantization
             value = safe_getattr(module, "input_quant.fused_activation_quant_proxy.tensor_quant.scaling_impl.value")
             if value is not None:                

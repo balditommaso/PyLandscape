@@ -240,14 +240,14 @@ CIFAR100_std = [0.2675, 0.2565, 0.2761]
 
 class CIFAR100(datasets.CIFAR100):
     def __init__(
-         self,
-         root: str, 
-         download: bool = True,
-         train: bool = True, 
-         center: bool = True, 
-         rescale: bool = True, 
-         augment: bool = True
-     ) -> None:
+        self,
+        root: str, 
+        download: bool = True,
+        train: bool = True, 
+        center: bool = True, 
+        rescale: bool = True, 
+        augment: bool = True
+    ) -> None:
         mean = CIFAR100_mean if center else [0., 0., 0.]
         std = CIFAR100_std if rescale else [1., 1., 1.]
         
@@ -420,7 +420,6 @@ class CIFAR100DataModule(pl.LightningDataModule):
         
         # take the first samples
         c_dataset = Subset(c_dataset, range(num_samples))
-        # c_dataset, _ = random_split(c_dataset, [num_samples, len(c_dataset) - num_samples])
         print(f"C-CIFAR-100 ({corruption} - {severity}):\t{len(c_dataset)} sameples")
 
         return DataLoader(

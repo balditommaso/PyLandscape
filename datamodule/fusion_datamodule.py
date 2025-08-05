@@ -26,15 +26,17 @@ class FusionData(datasets.VisionDataset):
     
     H5FILE = 'db-220629-v0.h5'
     
-    def __init__(self, 
-            root: str = None, 
-            train: bool = True,
-            standardize: bool = True,
-            resize: bool = True,
-            cache: bool = True,
-            noise_adder: Optional[Callable] = None,
-            noise_module: float = 0.0,
-            target_transform: Optional[Callable] = None) -> None:
+    def __init__(
+        self, 
+        root: str = None, 
+        train: bool = True,
+        standardize: bool = True,
+        resize: bool = True,
+        cache: bool = True,
+        noise_adder: Optional[Callable] = None,
+        noise_module: float = 0.0,
+        target_transform: Optional[Callable] = None
+    ) -> None:
         
         self.root = root
         self.data = None
@@ -321,17 +323,18 @@ class FusionDataModule(pl.LightningDataModule):
     LABEL = ['n1_ampl_10k', 'n1_phase_raw']
     
     def __init__(
-            self,
-            data_path: str,
-            batch_size: int = 32, 
-            val_size: float = 0.1,
-            num_workers: int = 8, 
-            seed: int = 20000605,
-            noise_type: Optional[str] = None,
-            noise_module: float = 0.0,
-            standardize: bool = False,
-            cache: bool = True,
-            **kwargs) -> None:
+        self,
+        data_path: str,
+        batch_size: int = 32, 
+        val_size: float = 0.1,
+        num_workers: int = 8, 
+        seed: int = 20000605,
+        noise_type: Optional[str] = None,
+        noise_module: float = 0.0,
+        standardize: bool = False,
+        cache: bool = True,
+        **kwargs
+    ) -> None:
         super().__init__()
         self.data_path = data_path
         self.batch_size = batch_size   
@@ -360,26 +363,32 @@ class FusionDataModule(pl.LightningDataModule):
     
     def setup(self, stage: str) -> None:
         pl.seed_everything(self.seed, workers=True)
-        self.train_dataset = FusionData(root=self.data_path, 
-                                        train=True,
-                                        standardize=self.standardize,
-                                        cache=self.cache,
-                                        noise_adder=self.noise_adder,
-                                        noise_module=self.noise_module)
-        self.test_dataset = FusionData(root=self.data_path, 
-                                       train=False,
-                                       standardize=self.standardize,
-                                       cache=self.cache,
-                                       noise_adder=self.noise_adder,
-                                       noise_module=self.noise_module)
+        self.train_dataset = FusionData(
+            root=self.data_path, 
+            train=True,
+            standardize=self.standardize,
+            cache=self.cache,
+            noise_adder=self.noise_adder,
+            noise_module=self.noise_module
+        )
+        self.test_dataset = FusionData(
+            root=self.data_path, 
+            train=False,
+            standardize=self.standardize,
+            cache=self.cache,
+            noise_adder=self.noise_adder,
+            noise_module=self.noise_module
+        )
         
         if self.val_size > 0.0:
-            self.val_dataset = FusionData(root=self.data_path, 
-                                          train=True,
-                                          standardize=self.standardize,
-                                          cache=self.cache,
-                                          noise_adder=self.noise_adder,
-                                          noise_module=self.noise_module)
+            self.val_dataset = FusionData(
+                root=self.data_path, 
+                train=True,
+                standardize=self.standardize,
+                cache=self.cache,
+                noise_adder=self.noise_adder,
+                noise_module=self.noise_module
+            )
             train_part, val_part = random_split(self.train_dataset, [1 - self.val_size, self.val_size])
             self.train_dataset = Subset(self.train_dataset, train_part.indices)
             self.val_dataset = Subset(self.val_dataset, val_part.indices)

@@ -39,7 +39,6 @@ class NoisyDataset(Dataset):
     
     
     def __getitem__(self, index):
-        # check if it is a tuple
         sample = self.original_dataloader.dataset[index]
         
         if isinstance(sample, tuple):

@@ -38,7 +38,7 @@ ENCODER_SIZE = {
 
 def econ_model(size: str = "baseline") -> Tuple[nn.Module, nn.Module]:
     ENCODED_DIM = 16
-    INPUT_SHAPE = (1, 8, 8)  # PyTorch defaults to (C, H, W)
+    INPUT_SHAPE = (1, 8, 8)  
     kernel_size, num_kernels, fc_input = ENCODER_SIZE[size]
 
     # build the encoder
@@ -243,7 +243,7 @@ class AutoEncoder(pl.LightningModule):
 
     def training_step(self, batch: Tuple[tensor, tensor], batch_idx: int):
         input, target = batch
-        input.requires_grad = True # this is essential!
+        input.requires_grad = True
         input_hat = self(input)
         loss = self.criterion(input_hat, target)
         # Jacobian regularizer

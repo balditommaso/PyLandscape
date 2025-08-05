@@ -39,18 +39,19 @@ ARRANGE_MASK = torch.tensor(
 
 class AutoEncoderDataModule(pl.LightningDataModule):
     def __init__(
-            self, 
-            data_path: str, 
-            processed_data: Optional[str] = None,
-            batch_size: int = 500, 
-            train_size: float = 0.8,
-            val_size: float = 0.1,
-            test_size: float = 0.1,
-            num_workers: int = 8, 
-            noise_type: Optional[str] = None,
-            noise_module: float = 0.0,
-            seed: int = 20000605,
-            **kwargs) -> None:
+        self, 
+        data_path: str, 
+        processed_data: Optional[str] = None,
+        batch_size: int = 500, 
+        train_size: float = 0.8,
+        val_size: float = 0.1,
+        test_size: float = 0.1,
+        num_workers: int = 8, 
+        noise_type: Optional[str] = None,
+        noise_module: float = 0.0,
+        seed: int = 20000605,
+        **kwargs
+    ) -> None:
         super().__init__()
         self.raw_data = data_path
         self.processed_data = processed_data

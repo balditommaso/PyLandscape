@@ -10,7 +10,6 @@ config=""
 max_processes=1
 num_models=-1
 precisions=(4 5 6 7 8 9 10 11 12)
-# precisions=(4 8 12)
 
 
 has_argument() {

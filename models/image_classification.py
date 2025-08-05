@@ -1,7 +1,3 @@
-
-"""
-Modified from: https://github.com/Xilinx/brevitas/blob/master/src/brevitas_examples/imagenet_classification/models/mobilenetv1.py
-"""
 import pytorch_lightning as pl
 from typing import Union
 from brevitas import config
@@ -117,7 +113,7 @@ class VisionModel(pl.LightningModule):
     
     def training_step(self, batch, batch_idx):
         x, y = batch
-        x.requires_grad = True # this is essential!
+        x.requires_grad = True 
         y_hat = self(x)
         loss = self.criterion(y_hat, y)
         # apply regularizer

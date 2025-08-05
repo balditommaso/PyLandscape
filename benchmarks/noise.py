@@ -13,7 +13,8 @@ class Noise:
     
     @staticmethod
     def set_seed(seed: int):
-        """Set a seed of the randomness in the noise computations.
+        """
+        Set a seed of the randomness in the noise computations.
 
         Args:
             seed (int): key of the seed.
@@ -30,7 +31,8 @@ class Noise:
         percentage: float = 5.0, 
         perturbation_range: float = 0.1
     ) -> np.ndarray:
-        """Add random perturbation on a tensor of data.
+        """
+        Add random perturbation on a tensor of data.
 
         Args:
             data (Union[torch.tensor, np.ndarray]): Data tensor to be perturbed.
@@ -57,7 +59,8 @@ class Noise:
         mean: float = 0.0, 
         std: float = 1
     ) -> np.ndarray:
-        """Add Gaussian perturbation on a tensor of data.
+        """
+        Add Gaussian perturbation on a tensor of data.
 
         Args:
             data (Union[torch.tensor, np.ndarray]): Data tensor to be perturbed.
@@ -82,7 +85,8 @@ class Noise:
         data: Union[torch.tensor, np.ndarray, pd.DataFrame], 
         percentage: float = 5.0
     ) -> Union[torch.tensor, np.ndarray, pd.DataFrame]:
-        """Add Salt & Pepper perturbation on a tensor of data.
+        """
+        Add Salt & Pepper perturbation on a tensor of data.
 
         Args:
             data (Union[torch.tensor, np.ndarray, pd.DataFrame]): Data tensor to be perturbed.
@@ -106,17 +110,17 @@ class Noise:
                 "Unsupported data type. Only PyTorch tensors, Pandas DataFrames, and NumPy ndarrays are supported."
             )
         
-        # Calculate the number of elements to corrupt
+        # calculate the number of elements to corrupt
         num_elements = data.size
         num_corrupted = int(num_elements * (percentage / 200))
         
-        # Add salt noise
+        # add salt noise
         coords = np.unravel_index(
             np.random.choice(num_elements, num_corrupted, replace=False), data.shape
         )
         data[coords] = 1
         
-        # Add pepper noise
+        # add pepper noise
         coords = np.unravel_index(
             np.random.choice(num_elements, num_corrupted, replace=False), data.shape
         )

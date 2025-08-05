@@ -1,5 +1,6 @@
 
 """
+Code adapted from:
 The following code is adapted from:
 DO WIDE AND DEEP NETWORKS LEARN THE SAME
 THINGS? UNCOVERING HOW NEURAL NETWORK
@@ -84,7 +85,6 @@ class CKA(Metric):
         for x in activations1.values():
             if x is None:
                 continue
-            # HAWQ nesting problem
             elif isinstance(x, tuple):
                 layers_gram1.append(CKA.gram_matrix(x[0]))    
             else:
@@ -95,7 +95,6 @@ class CKA(Metric):
         for x in activations2.values():
             if x is None:
                 continue
-            # HAWQ nesting problem
             elif isinstance(x, tuple):
                 layers_gram2.append(CKA.gram_matrix(x[0]))    
             else:
@@ -164,8 +163,5 @@ class CKA(Metric):
 
         return result
     
-    
-    # TODO: compute similarity using model parameters
-    def module_similarity(self):
-        pass
+
 

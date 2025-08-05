@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from typing import Optional, Tuple, List
 
 # ---------------------------------------------------------------------------- #
@@ -23,6 +24,7 @@ econ_noise_tags = ["gaussian", "salt_pepper"]
 vision_noise_tags = ["gaussian_noise", "impulse_noise"]
 vision_noise_module = [1, 2, 3, 4, 5]
 flip_strategy = ["random_bit_flip", "fkeras_bit_flip"]
+LINE_STYLES = ['-', '--', ':', '-.']  
 
 # plot styling
 FIG_SIZE = (7, 5)
@@ -86,7 +88,7 @@ def plot_precision_vs_performace(
         plt.ylim(ylim)
     
     plt.tick_params(axis='both', which='major', labelsize=TICK_SIZE) 
-    plt.xlabel("Precision", fontsize=LABEL_SIZE)
+    plt.xlabel("Bit-width", fontsize=LABEL_SIZE)
     plt.ylabel(performance_tag.replace("_", " "), fontsize=LABEL_SIZE)
 
     # plt.title(title, fontsize=16)
@@ -131,7 +133,7 @@ def plot_precision_vs_metrics(
         plt.ylim(ylim)
         
     plt.tick_params(axis='both', which='major', labelsize=TICK_SIZE)  # Increase major tick label size
-    plt.xlabel("Precision", fontsize=LABEL_SIZE)
+    plt.xlabel("Bit-width", fontsize=LABEL_SIZE)
     plt.ylabel(y, fontsize=LABEL_SIZE)
     
     if plot_legend:

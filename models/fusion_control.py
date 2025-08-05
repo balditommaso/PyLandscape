@@ -112,7 +112,7 @@ class FusionControl(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = Adam(self.parameters(), 
                          lr=self.learning_rate, 
-                         weight_decay=self.l2)  # lr=1e-3
+                         weight_decay=self.l2)  
         scheduler = None
         if self.scheduler == 'step':
             scheduler = StepLR(optimizer, step_size=15, gamma=0.5)

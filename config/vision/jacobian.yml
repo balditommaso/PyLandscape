@@ -44,46 +44,46 @@ fit:
 
 
 test:
-  # noise:
-  #   path: ./data/VISION/CIFAR-100-C/CIFAR-100-C
-  #   num_samples: 10000
-  #   type:
-  #     - gaussian_noise
-  #     - impulse_noise
-  #   severities:
-  #     - 1
-  #     - 2
-  #     - 3
-  #     - 4 
-  #     - 5
-  # bit_flip:
-  #   n_bits:
-  #     - 1
-  #     - 5
-  #     - 10
-  #     - 20
-  #     - 50
-  #     - 100
-  #     - 150
-  #     - 200
-  #   strategy:
-  #     - fkeras
-  #     - random
-  # plot:
-  #   min_lam: -0.3
-  #   max_lam: 0.3
-  #   steps: 400
+  noise:
+    path: ./data/VISION/CIFAR-100-C/CIFAR-100-C
+    num_samples: 10000
+    type:
+      - gaussian_noise
+      - impulse_noise
+    severities:
+      - 1
+      - 2
+      - 3
+      - 4 
+      - 5
+  bit_flip:
+    n_bits:
+      - 1
+      - 5
+      - 10
+      - 20
+      - 50
+      - 100
+      - 150
+      - 200
+    strategy:
+      - fkeras
+      - random
+  plot:
+    min_lam: -0.3
+    max_lam: 0.3
+    steps: 400
   mode_connectivity:
     curve: Bezier
     num_bends: 3
     num_points: 60
     max_epochs: 30
-  # cka:
-  #   batch_size: 10
-  #   num_outputs: 10
-  #   num_runs: 1
-  # hessian:
-  #   n_iter: 100
-  #   top_n: 1
+  cka:
+    batch_size: 10
+    num_outputs: 10
+    num_runs: 1
+  hessian:
+    n_iter: 100
+    top_n: 1
 
 

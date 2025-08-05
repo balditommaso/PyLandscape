@@ -64,7 +64,6 @@ hexCoords = hexCoords / oneHexCell
 hex_metric = ot.dist(hexCoords, hexCoords, "euclidean")
 
 
-
 def normalize(data, sumlog2=True):
     """
     Normalize data by dividing by the sum of the log2 of the occupancy

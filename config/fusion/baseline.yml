@@ -39,29 +39,29 @@ fit:
 
 
 test:
-  # noise:
-  #   type:
-  #     - gaussian
-  #     - salt_pepper
-  #   percentage:
-  #     - 1
-  #     - 5
-  #     - 10
-  #     - 15
-  #     - 20
-  #     - 50
-  # bit_flip:
-  #   n_bits:
-  #     # - 1
-  #     # - 5
-  #     # - 10
-  #     # - 20
-  #     - 50
-  #     - 100 
-  #     - 1000
-  #   strategy:
-  #     # - fkeras
-  #     - random
+  noise:
+    type:
+      - gaussian
+      - salt_pepper
+    percentage:
+      - 1
+      - 5
+      - 10
+      - 15
+      - 20
+      - 50
+  bit_flip:
+    n_bits:
+      - 1
+      - 5
+      - 10
+      - 20
+      - 50
+      - 100 
+      - 1000
+    strategy:
+      # - fkeras
+      - random
   plot:
     min_lam: -0.3
     max_lam: 0.3
@@ -71,13 +71,13 @@ test:
     num_bends: 3
     num_points: 20
     max_epochs: 40
-  # cka:
-  #   batch_size: 10
-  #   num_outputs: 
-  #     - 20
-  #     - 40
-  #   num_runs: 1
-  # hessian:
-  #   n_iter: 100
-  #   top_n: 1
+  cka:
+    batch_size: 10
+    num_outputs: 
+      - 20
+      - 40
+    num_runs: 1
+  hessian:
+    n_iter: 100
+    top_n: 1
 

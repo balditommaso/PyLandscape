@@ -77,7 +77,7 @@ SCmask_48_36 = torch.tensor(
         )
 Remap_48_36 = torch.zeros((48, 36))
 # combine neighbor cells in 2x2 grids, record weights
-# multilpy weights by 0.25 for now to account for effective increase in cells from 12 (sum weights now 48 not 12)
+# multiply weights by 0.25 for now to account for effective increase in cells from 12 (sum weights now 48 not 12)
 for isc, sc in enumerate(SCmask_48_36):
     for tc in sc[:4]:
         Remap_48_36[int(tc), isc] = 1

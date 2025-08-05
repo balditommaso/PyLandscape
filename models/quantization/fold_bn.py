@@ -36,9 +36,7 @@ def fold_bn_layers(model: nn.Module) -> nn.Module:
                 if isinstance(new_model._modules[module_names[k-1]], nn.Conv2d):
                     # folded BN
                     folded_conv = _fold_conv_bn_eval(new_model._modules[module_names[k-1]], new_model._modules[name])
-                    # replace old weight values and remove the BN layer
-                    # new_model._modules.pop(name) # Remove the BN layer
                     new_model._modules[module_names[k]] = nn.Identity()
-                    new_model._modules[module_names[k-1]] = folded_conv # Replace the Convolutional Layer by the folded version
+                    new_model._modules[module_names[k-1]] = folded_conv 
     new_model.train()
     return new_model

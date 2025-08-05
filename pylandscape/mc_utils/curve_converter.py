@@ -1,12 +1,10 @@
 import brevitas.nn as qnn
 import functools
-from brevitas.core.utils import StatelessBuffer
 from copy import deepcopy
 from torch import nn
 from torch.nn import Module
 from typing import List
 from brevitas.nn.quant_layer import QuantNonLinearActLayer
-from warnings import warn
 from .curve_module import Conv2d, Linear, ConvTranspose2D, QuantLinear, QuantConv2d, QuantNLAL
 
 
@@ -57,7 +55,6 @@ def curved_model(model: Module, fix_points: List[bool]) -> Module:
             curve_module = Conv2d(module, fix_points)
 
         else:
-            # print(f"Layer not converted!\n({type(module)})")
             continue
         
         rsetattr(curve_model, name, curve_module)

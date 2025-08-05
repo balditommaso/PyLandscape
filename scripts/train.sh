@@ -10,7 +10,6 @@ learning_rate=0.001
 num_test=0
 device_id=-1
 precisions=(4 5 6 7 8 9 10 11 12)
-# precisions=(4 8 12)
 
 
 has_argument() {
@@ -155,4 +154,3 @@ else
     done
 fi
 
-# return 0
