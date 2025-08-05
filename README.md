@@ -33,12 +33,7 @@ pip install -r requirements.txt
 ### Download the HGCAL dataset
 
 Hide for double blinded peer reviews.
-<!-- You can download the dataset for the ECON-T model
 
-```
-wget -P ./data/ECON/ https://retis.santannapisa.it/~tbaldi/hgcal_dataset/Elegun-20241029T091808Z-001.zip
-unzip Elegun-20241029T091808Z-001.zip -d ./data/ECON
-``` -->
 
 ### Download the Fusion dataset
 
@@ -81,8 +76,3 @@ Hide for double blinded peer reviews.
     --num_models 3
 ```
 
-<!-- ## Citation
-
-PyLandscape has been developed as part of the following paper. We appreciate it if you would please cite the following paper if you found the library useful for your work:
-
-* T. Baldi, J. Campos, O. Weng, C. Geniesse, N. Tran, R. Kastner, A. Biondi. Loss Landscape Analysis for Reliable Quantized ML Models for Scientific Sensing, 2025, [PDF](http://arxiv.org/abs/2502.08355). -->
