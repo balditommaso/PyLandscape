@@ -28,11 +28,11 @@ CALQ_MASK = torch.tensor(
     ]
 )
 
-
 ENCODER_SIZE = {
     "baseline": (3, 8, 128),
     "large": (5, 32, 288),
     "small": (3, 1, 16),
+    "extra_large": (5, 64, 576), 
 }
 
 
@@ -41,46 +41,83 @@ def econ_model(size: str = "baseline") -> Tuple[nn.Module, nn.Module]:
     INPUT_SHAPE = (1, 8, 8)  
     kernel_size, num_kernels, fc_input = ENCODER_SIZE[size]
 
-    # build the encoder
-    encoder = nn.Sequential(OrderedDict([
-        ("conv2d", nn.Conv2d(
-                in_channels=1, 
-                out_channels=num_kernels, 
-                kernel_size=kernel_size, 
-                stride=2, 
-                padding=1
-            )
-        ),
+    # ---------------------------
+    # Encoder
+    # ---------------------------
+    encoder_layers = [
+        ("conv2d_1", nn.Conv2d(
+            in_channels=1,
+            out_channels=num_kernels,
+            kernel_size=kernel_size,
+            stride=2,
+            padding=1
+        )),
         ("relu1", nn.ReLU()),
+    ]
+
+    # EXTRA layer only for extra_large
+    if size == "extra_large":
+        encoder_layers.extend([
+            ("conv2d_2", nn.Conv2d(
+                in_channels=num_kernels,
+                out_channels=num_kernels,
+                kernel_size=3,
+                stride=1,
+                padding=1
+            )),
+            ("relu_extra", nn.ReLU()),
+        ])
+
+    encoder_layers.extend([
         ("flatten", nn.Flatten()),
         ("dense", nn.Linear(fc_input, ENCODED_DIM)),
-    ]))    
-    # build the decoder    
-    decoder = nn.Sequential(OrderedDict([
-            ("dec_dense", nn.Linear(ENCODED_DIM, 128)),
-            ("relu1", nn.ReLU()),
-            ("unflatten", nn.Unflatten(1, (8, 4, 4))),
-            ("convtrans2d1", nn.ConvTranspose2d(
-                    in_channels=8, 
-                    out_channels=8, 
-                    kernel_size=3, 
-                    stride=2, 
-                    padding=1, 
-                    output_padding=1
-                )
-            ),
-            ("relu2", nn.ReLU()),
-            ("convtrans2d2", nn.ConvTranspose2d(
-                    in_channels=8, 
-                    out_channels=INPUT_SHAPE[0], 
-                    kernel_size=3, 
-                    stride=1, 
-                    padding=1
-                )
-            ),
-            ("sigmoid", nn.Sigmoid()),
-        ]))
-    
+    ])
+
+    encoder = nn.Sequential(OrderedDict(encoder_layers))
+
+    # ---------------------------
+    # Decoder
+    # ---------------------------
+    decoder_layers = [
+        ("dec_dense", nn.Linear(ENCODED_DIM, 128)),
+        ("relu1", nn.ReLU()),
+        ("unflatten", nn.Unflatten(1, (8, 4, 4))),
+        ("convtrans1", nn.ConvTranspose2d(
+            in_channels=8,
+            out_channels=8,
+            kernel_size=3,
+            stride=2,
+            padding=1,
+            output_padding=1
+        )),
+        ("relu2", nn.ReLU()),
+    ]
+
+    if size == "extra_large":
+        decoder_layers.extend([
+            ("convtrans_extra", nn.ConvTranspose2d(
+                in_channels=8,
+                out_channels=8,
+                kernel_size=3,
+                stride=1,
+                padding=1
+            )),
+            ("relu_extra", nn.ReLU()),
+        ])
+
+    decoder_layers.extend([
+        ("convtrans2", nn.ConvTranspose2d(
+            in_channels=8,
+            out_channels=INPUT_SHAPE[0],
+            kernel_size=3,
+            stride=1,
+            padding=1
+        )),
+        ("sigmoid", nn.Sigmoid()),
+    ])
+
+    decoder = nn.Sequential(OrderedDict(decoder_layers))
+
     return encoder, decoder
 
 

@@ -49,6 +49,7 @@ class AutoEncoderDataModule(pl.LightningDataModule):
         num_workers: int = 8, 
         noise_type: Optional[str] = None,
         noise_module: float = 0.0,
+        noise_injection_ratio = 0.0,
         seed: int = 20000605,
         **kwargs
     ) -> None:
@@ -60,6 +61,7 @@ class AutoEncoderDataModule(pl.LightningDataModule):
         self.seed = seed
         self.noise_type = noise_type
         self.noise_module = noise_module
+        self.noise_injection_ratio = noise_injection_ratio
         self.calq_cols = [f"CALQ_{i}" for i in range(48)]
         
         # test the split of the dataset
@@ -169,23 +171,34 @@ class AutoEncoderDataModule(pl.LightningDataModule):
         else:
             shaped_data = np.load(self.processed_data)
         
-        data = torch.tensor(shaped_data, dtype=torch.float32)
-        dataset = None
+        clean_data = torch.tensor(shaped_data, dtype=torch.float32)
+        max_value = shaped_data.max()
+        
         if self.noise_adder is not None:
             # add noise to the data
             Noise.set_seed(self.seed)
-            noise_data = torch.tensor(
-                self.noise_adder(shaped_data, percentage=self.noise_module)
-                )
-            noise_data = torch.clamp(noise_data, 0 , noise_data.max())
-            noise_data = torch.tensor(noise_data, dtype=torch.float32)
-            dataset = TensorDataset(noise_data, data)
+            noise_np = self.noise_adder(shaped_data, percentage=self.noise_module)
+            noise_np = np.clip(noise_np, 0 , max_value)
+            noisy = torch.tensor(noise_np, dtype=torch.float32)
         else:
-            dataset = TensorDataset(data, data)
+            noisy = clean_data.clone()
+            
+        if self.noise_injection_ratio > 0.0:
+            N = len(clean_data)
+            num_noisy = int(N * self.noise_injection_ratio)
+            
+            g = torch.Generator().manual_seed(self.seed)
+            noisy_indices = torch.randperm(N, generator=g)[:num_noisy]
+            
+            mixed_inputs = clean_data.clone()
+            mixed_inputs[noisy_indices] = noisy[noisy_indices]
+        else:
+            mixed_inputs = noisy
+            
+        dataset = TensorDataset(mixed_inputs, clean_data)
         
         # calculate the number of samples for each set
-        self.train_dataset, self.val_dataset, self.test_dataset = \
-                        random_split(
+        self.train_dataset, self.val_dataset, self.test_dataset = random_split(
                             dataset, 
                             [self.train_size, self.validation_size, self.test_size],
                             torch.Generator().manual_seed(self.seed)
@@ -243,4 +256,7 @@ class AutoEncoderDataModule(pl.LightningDataModule):
         if self.noise_type is not None:
             msg += f"noise type:\t{self.noise_type}\n" \
                    f"noise magnitude:\t{self.noise_module}\n"
+
+        if self.noise_injection_ratio > 0.0:
+            msg += f"noise injection:\t{self.noise_injection_ratio*100}\n"
         print(msg)
