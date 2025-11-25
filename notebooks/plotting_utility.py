@@ -13,6 +13,7 @@ from typing import Optional, Tuple, List
 DATA_PATH = '../checkpoint/'
 
 performance_metric = {
+    "LARGE_ECON": "AVG_EMD",
     "ECON": "AVG_EMD",
     "FUSION": "ampl_mae",
     "VGG16": "test_top1_acc",
@@ -52,7 +53,13 @@ labels = {
     "LIP_0.000001": "Orthogonality (δ=1e-6)",
     "LIP_0.0000001": "Orthogonality (δ=1e-7)",
 
-    "baseline": "Baseline"
+    "baseline": "Baseline",
+    
+    "0.0": "Baseline",
+    "GAUSSIAN_0.1": "Gaussian Injection (10%)",
+    "GAUSSIAN_0.3": "Gaussian Injection (30%)",
+    "SP_0.1": "S&P Injection (10%)",
+    "SP_0.3": "S&P Injection (30%)",
 }
 
 # ---------------------------------------------------------------------------- #

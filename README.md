@@ -57,7 +57,7 @@ Hide for double blinded peer reviews.
 
 ```
 . scripts/train.sh \
-    --config ./config/econ/baseline.yml \
+    --config ./config/large_econ/baseline_gaussian.yml \
     --bs 1024 \
     --lr 0.0015625 \
     --device_id 0 \

@@ -118,11 +118,15 @@ def main():
             for percentage in noise_cfg['percentage']:
                 # get the data_module with noisy data
                 noisy_data_module = getattr(dm, data_cfg['name'])(
+                    data_path=data_cfg["data_path"],
+                    train_size=data_cfg["train_size"],
+                    val_size=data_cfg["val_size"],
+                    test_size=data_cfg["test_size"],
                     batch_size=args.batch_size,
                     processed_data=f"{type}_{percentage}",
                     noise_type=type,
                     noise_module=percentage,
-                    **config['data']
+                    # **config['data']
                 )
                 if isinstance(noisy_data_module, dm.AutoEncoderDataModule):
                     _, val_sum = noisy_data_module.get_val_max_and_sum()
