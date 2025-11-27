@@ -1,4 +1,4 @@
-save_dir: 'LARGE_ECON_SP_0.1'
+save_dir: 'LARGE_ECON_SP_0.5'
 
 # dataset config
 data:
@@ -11,7 +11,7 @@ data:
   # noise injection during training
   noise_type: salt_pepper
   noise_module: 5
-  noise_injection_ratio: 0.1
+  noise_injection_ratio: 0.5
 
 
 model:

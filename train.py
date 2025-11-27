@@ -113,10 +113,9 @@ def main():
     
     # load the data from the full precision version
     if args.pretrained:
-        full_precision_ckpt = config["save_dir"].rsplit("_", 2)[:-1]
-        if len(full_precision_ckpt) > 1:
-            full_precision_ckpt = "_".join(full_precision_ckpt
-                                           )
+        full_precision_ckpt = config["save_dir"].rsplit("_", 2)[0]
+        # if len(full_precision_ckpt) > 1:
+        #     full_precision_ckpt = "_".join(full_precision_ckpt)
         model_ckpt = os.path.join(
             args.saving_folder, 
             f"{full_precision_ckpt}_32b/"
