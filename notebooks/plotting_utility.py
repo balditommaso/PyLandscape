@@ -28,7 +28,7 @@ flip_strategy = ["random_bit_flip", "fkeras_bit_flip"]
 LINE_STYLES = ['-', '--', ':', '-.']  
 
 # plot styling
-FIG_SIZE = (7, 5)
+FIG_SIZE = (15, 7)
 LINE_WIDTH = 2
 LEGEND_SIZE = 14
 LABEL_SIZE = 20
@@ -58,8 +58,14 @@ labels = {
     "0.0": "Baseline",
     "GAUSSIAN_0.1": "Gaussian Injection (10%)",
     "GAUSSIAN_0.3": "Gaussian Injection (30%)",
+    "GAUSSIAN_0.5": "Gaussian Injection (50%)",
+    "GAUSSIAN_0.8": "Gaussian Injection (80%)",
+    "GAUSSIAN_1.0": "Gaussian Injection (100%)",
     "SP_0.1": "S&P Injection (10%)",
     "SP_0.3": "S&P Injection (30%)",
+    "SP_0.5": "S&P Injection (50%)",
+    "SP_0.8": "S&P Injection (80%)",
+    "SP_1.0": "S&P Injection (100%)",
 }
 
 # ---------------------------------------------------------------------------- #
@@ -76,19 +82,28 @@ def plot_precision_vs_performace(
 ) -> None:
     plt.figure(figsize=FIG_SIZE)
 
-    # Group data and plot each group with mean and std shading
     for label, df_group in values.groupby(group_by):
-        # Plot mean line for the group
-        plt.plot(df_group["precision"], df_group[performance_tag], marker='o', linewidth=LINE_WIDTH, label=label)
+
+        # Choose dashed or solid
+        linestyle = '--' if 'small' in str(label).lower() else '-'
+
+        plt.plot(
+            df_group["precision"],
+            df_group[performance_tag],
+            marker='o',
+            linewidth=LINE_WIDTH,
+            linestyle=linestyle,
+            label=label
+        )
         
-        # Plot shaded area for standard deviation
         if std:
             plt.fill_between(
                 df_group["precision"],
                 df_group[performance_tag] - df_group[f"{performance_tag} std"],
                 df_group[performance_tag] + df_group[f"{performance_tag} std"],
-                alpha=0.2  # Adjust transparency as needed
+                alpha=0.2
             )
+
     if log_scale:
         plt.yscale('log')
     if ylim is not None:
@@ -98,14 +113,22 @@ def plot_precision_vs_performace(
     plt.xlabel("Bit-width", fontsize=LABEL_SIZE)
     plt.ylabel(performance_tag.replace("_", " "), fontsize=LABEL_SIZE)
 
-    # plt.title(title, fontsize=16)
     if plot_legend:
-        legend = plt.legend(title=group_by, fontsize=LABEL_SIZE-2, ncol=1)
-        legend.set_title(group_by, prop={'size': LABEL_SIZE, 'weight': 'bold'}) 
-        
-    
+        legend = plt.legend(
+            title=group_by,
+            fontsize=LABEL_SIZE - 2,
+            ncol=1,
+            bbox_to_anchor=(1.05, 1),
+            loc='upper left',
+            borderaxespad=0.
+        )
+        legend.set_title(group_by, prop={'size': LABEL_SIZE, 'weight': 'bold'})
+
     plt.grid(True)
+    plt.tight_layout()
     plt.show()
+
+
 
 
 def plot_precision_vs_metrics(
@@ -341,7 +364,7 @@ def load_benchmarks(
 
     # Define noise tags based on model type
     noise_tags = (
-        econ_noise_tags if model_type in ["ECON", "FUSION"] else vision_noise_tags
+        econ_noise_tags if model_type in ["ECON", "FUSION", "LARGE_ECON"] else vision_noise_tags
     )
 
     # Store results
@@ -374,7 +397,7 @@ def load_benchmarks(
 
                         # add noisy cases
                         for noise_tag in noise_tags:
-                            if noise_modules and model_type in ["ECON", "FUSION"]:
+                            if noise_modules and model_type in ["ECON", "FUSION", "LARGE_ECON"]:
                                 for module in noise_modules:
                                     records.append({
                                         "batch_size": bs,
