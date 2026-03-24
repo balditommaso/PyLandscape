@@ -9,6 +9,7 @@ from pyhessian import hessian
 from .metric import Metric
 import torch
 from torch import nn, tensor
+from torch.types import _device
 import numpy as np
 
 # NOTE: there is a bug in the PyHessian package, when it get the parameters w/o grads
@@ -27,6 +28,7 @@ class Hessian(Metric):
         dataloader: DataLoader, 
         name: str = "hessian",
         use_cache: bool = True,
+        device: _device = "cpu"
     ) -> None:
         """
         Initializer of the Hessian class.
@@ -47,7 +49,7 @@ class Hessian(Metric):
             self.model,
             criterion=criterion,
             dataloader=dataloader,
-            cuda=torch.cuda.is_available()
+            cuda="cuda" in device
         )
         
         

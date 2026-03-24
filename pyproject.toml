@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pylandscape"
-version = "0.0.0"
+version = "0.1.0"
 description = "Python package to explore the loss landscape of Machine Learning models"
 authors = ["Tommaso Baldi"]
 license = "MIT"
@@ -14,14 +14,41 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
-numpy = "1.24.4"
+numpy = "*"
 pandas = "*"
 scipy = "*"
-torch = "2.3.0"
-vtk = "9.4.1"
+torch = "*"
 tqdm = "*"
 PyHessian = "*"
+brevitas = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-cov = "*"
+pytest-mock = "*"
+torchvision = "*"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --cov=pylandscape --cov-report=term-missing --cov-report=xml"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "cuda: marks tests that require GPU (deselect with '-m \"not cuda\"')",
+    "integration: marks integration tests",
+]
+
+[tool.coverage.run]
+source = ["pylandscape"]
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+    "*/__pycache__/*",
+]

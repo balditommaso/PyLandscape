@@ -146,6 +146,9 @@ class AutoEncoder(pl.LightningModule):
 
         self.encoder, self.decoder = econ_model(config["model"]["size"])
 
+        # Store the encoded dimension from the encoder's linear layer
+        self.encoder_dim = list(self.encoder.named_modules())[-1].in_features
+
         # quantize the model
         if self.quantized:
             quant_cfg = config['model']['quantization']
@@ -224,7 +227,7 @@ class AutoEncoder(pl.LightningModule):
     def predict(self, x):
         decoded_Q = self(x)
         encoded_Q = self.encoder(x)
-        encoded_Q = torch.reshape(encoded_Q, (len(encoded_Q), self.encoded_dim, 1))
+        encoded_Q = torch.reshape(encoded_Q, (len(encoded_Q), self.encoder_dim, 1))
         return decoded_Q, encoded_Q
 
 

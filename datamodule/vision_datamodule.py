@@ -43,52 +43,7 @@ class CIFAR10(datasets.CIFAR10):
         transform = transforms.Compose(transf_list)
         super().__init__(root=root, train=train, transform=transform, download=download)
 
-
-class CIFAR10C(Dataset):
-    
-    C_CIFAR10_url = "https://zenodo.org/records/2535967/files/CIFAR-10-C.tar?download=1"
-    C_CIFAR10_tar_path = "CIFAR-10-C.tar"
-    
-    def __init__(self, root: str, corruption: str) -> None:
-        self.root = root
-        # normalize the images
-        self.transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize(CIFAR10_mean, CIFAR10_std)
-            ]) 
-        
-        self.data, self.labels = self.load_data(corruption)
-        
-        
-    def load_data(self, corruption: str):
-        # check if the C-CIFAR-10 is downloaded
-        if not os.path.exists(self.root):
-            extract_data(self.C_CIFAR10_url, self.C_CIFAR10_tar_path, self.root)
-        
-        # path to the selected corruption
-        data_path = os.path.join(self.root, f"{corruption}.npy")
-        if not os.path.exists(data_path):
-            raise ValueError(f"Not valid corruption type selected: {corruption}")
-        
-        images = np.load(data_path)
-        labels = np.load(os.path.join(self.root, "labels.npy"))
-        
-        return images, labels
-        
-    
-    def __len__(self):
-        return len(self.data)
-    
-    
-    def __getitem__(self, index):
-        image = self.data[index]
-        label = self.labels[index]
-        
-        if self.transform:
-            image = self.transform(image)
-        
-        return image, label
-   
+  
     
 class CIFAR10DataModule(pl.LightningDataModule):
     def __init__(
@@ -186,20 +141,20 @@ class CIFAR10DataModule(pl.LightningDataModule):
         )
         
         
-    def corrupted_dataloader(self, path: str, corruption: str, num_samples: Optional[int] = None) -> DataLoader: 
-        c_dataset = CIFAR10C(path, corruption)
-        assert len(c_dataset) >= num_samples, "There are no enough samples!"
-        c_dataset, _ = random_split(c_dataset, [num_samples, len(c_dataset) - num_samples])
-        print(f"C-CIFAR-10 ({corruption}):\t{len(c_dataset)} sameples")
+    # def corrupted_dataloader(self, path: str, corruption: str, num_samples: Optional[int] = None) -> DataLoader: 
+    #     c_dataset = CIFAR10C(path, corruption)
+    #     assert len(c_dataset) >= num_samples, "There are no enough samples!"
+    #     c_dataset, _ = random_split(c_dataset, [num_samples, len(c_dataset) - num_samples])
+    #     print(f"C-CIFAR-10 ({corruption}):\t{len(c_dataset)} sameples")
 
-        return DataLoader(
-            c_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            drop_last=True,
-            pin_memory=True
-        )
+    #     return DataLoader(
+    #         c_dataset,
+    #         batch_size=self.batch_size,
+    #         shuffle=False,
+    #         num_workers=self.num_workers,
+    #         drop_last=True,
+    #         pin_memory=True
+    #     )
         
         
     def raw_dataloader(self, train: bool = False, batch_size: Optional[int] = None) -> DataLoader:

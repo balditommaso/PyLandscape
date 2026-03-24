@@ -78,13 +78,7 @@ class BitFlip:
 
         return merged_msb_to_lsb_list
             
-    
-    @staticmethod
-    def dequantize(value: int, scale: float, zero_point: float) -> float:
-        """
-        Dequantize the integer value to bring it back in the float representation.
-        """
-        return (value - zero_point) * scale
+
     
     
     @staticmethod
