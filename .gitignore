@@ -16,7 +16,7 @@ __pycache__/
 .tar
 # pypi
 .egg-info
-
+.lock
 # VS Code
 .vscode
 
