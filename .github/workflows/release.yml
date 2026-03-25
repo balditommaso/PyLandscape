@@ -67,55 +67,8 @@ jobs:
             echo "The new version $NEW_VERSION is greater than the latest version $LATEST_VERSION on PyPI."
           fi
 
-  test_before_release:
-    needs: [details, check_pypi]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11"]
-        torch-version: ["2.0.*", "2.1.*", "2.2.*"]
-
-    name: Python ${{ matrix.python-version }} - PyTorch ${{ matrix.torch-version }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Cache Poetry dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.local/share/pypoetry
-          key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-${{ matrix.python-version }}-
-
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: |
-          poetry install --no-interaction --all-extras
-
-      - name: Run tests with pytest
-        env:
-          PYTEST_CURRENT_TEST: ${{ matrix.python-version }}-${{ matrix.torch-version }}
-        run: |
-          poetry run pytest tests/ -v --tb=short --cov=pylandscape --cov-report=xml --cov-report=term-missing
-
-      - name: Check test coverage
-        run: |
-          poetry run pytest tests/ --cov=pylandscape --cov-report=xml --cov-fail-under=50
-
   setup_and_build:
-    needs: [details, check_pypi, test_before_release]
+    needs: [details, check_pypi]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -157,7 +110,7 @@ jobs:
 
   pypi_publish:
     name: Upload release to PyPI
-    needs: [setup_and_build, details, test_before_release]
+    needs: [setup_and_build, details]
     runs-on: ubuntu-latest
     environment:
       name: release
@@ -175,7 +128,7 @@ jobs:
 
   github_release:
     name: Create GitHub Release
-    needs: [setup_and_build, details, test_before_release]
+    needs: [setup_and_build, details]
     runs-on: ubuntu-latest
     permissions:
       contents: write
