@@ -20,7 +20,7 @@ You can install the library from pip:
 ```
 pip install pylandscape
 ```
-
+<!-- 
 ### Install from source
 
 You can also compile the library from source
@@ -74,5 +74,5 @@ Hide for double blinded peer reviews.
     --device_id 0 \
     --max_processes 3 \
     --num_models 3
-```
+``` -->
 
