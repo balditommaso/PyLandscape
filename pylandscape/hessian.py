@@ -2,7 +2,6 @@
 Portion of code relative to FKeras inspired by: 
 https://github.com/KastnerRG/fkeras
 """
-
 from torch.utils.data import DataLoader
 from typing import Optional, List, Tuple
 from pyhessian import hessian
@@ -11,8 +10,6 @@ import torch
 from torch import nn, tensor
 from torch.types import _device
 import numpy as np
-
-# NOTE: there is a bug in the PyHessian package, when it get the parameters w/o grads
 
 
 METRICS = ["trace", "eigenvalue", "eigenvector", "density", "fkeras"]
