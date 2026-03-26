@@ -62,10 +62,15 @@ class Surface(Metric):
         
         perturbed_model = deepcopy(model)
         
+        target_parameters = [
+            (name, base_param, perturbed_param)
+            for (name, base_param), perturbed_param in zip(
+                model.named_parameters(), perturbed_model.parameters()
+            )
+            if "weight" in name or "bias" in name
+        ]
         # iterate over model parameters and apply perturbations in that direction
-        for (name, module), perturbed_module, *dir_vect in zip(
-            model.named_parameters(), perturbed_model.parameters(), *directions
-        ):
+        for name, module, perturbed_module, *dir_vect in zip(target_parameters, *directions):
             assert all(d.shape == module.data.shape for d in dir_vect), \
                 f"Tensor mismatch while adding perturbation! ({name})"
                 

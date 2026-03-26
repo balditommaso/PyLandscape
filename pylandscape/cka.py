@@ -1,89 +1,161 @@
-import torch
 import numpy as np
-from .metric import Metric
-from torch import nn, tensor
-from typing import List, Dict, Tuple, Optional
+import torch
+from torch import nn
+from typing import Dict, List, Optional, Tuple
 
 
-class CKA(Metric):
-    def __init__(self, device: Optional[torch.device] = None, dtype: torch.dtype = torch.float32, name: str = "cka"):
-        super().__init__(name)
-        self.device = torch.device('cpu') if device is None else device
+class CKA:
+    """
+    Minibatch CKA between all pairs of leaf-module activations across two models.
+
+    Memory strategy
+    ---------------
+    * Gram vectors are moved to CPU immediately after being computed on GPU,
+      so only one gram vector at a time lives on the GPU.
+    * Accumulator tensors (hsic_acc, hsic_self*) are kept on CPU throughout;
+      only the per-batch dot-products hit the GPU briefly.
+    * torch.cuda.empty_cache() is called once per batch, not per layer.
+    """
+
+    def __init__(
+        self,
+        device: Optional[torch.device] = None,
+        dtype: torch.dtype = torch.float32,
+    ):
+        self.device = torch.device("cpu") if device is None else device
         self.dtype = dtype
 
+    # ------------------------------------------------------------------
+    # Gram matrix helpers
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def _is_leaf(module: torch.nn.Module) -> bool:
+    def _is_leaf(module: nn.Module) -> bool:
         return len(list(module.children())) == 0
 
+    def _u_centered_gram_vector(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Compute the u-centred gram vector for a batch of activations.
 
-    def _register_hooks(self, model: nn.Module) -> Tuple[List[str], List[torch.utils.hooks.RemovableHandle], Dict[str, tensor]]:
-        """Register forward hooks on leaf modules. Returns (names, handles, activations_dict)."""
-        activations = {}
+        Args:
+            x: Tensor of shape (n, ...) — n examples, arbitrary trailing dims.
+
+        Returns:
+            Flattened gram vector of shape (n*n,) on CPU, dtype=self.dtype.
+            Returns a zero vector when n <= 2.
+        """
+        n = x.shape[0]
+        if n <= 2:
+            return torch.zeros(n * n, dtype=self.dtype)
+
+        # Flatten spatial / channel dims and compute gram on the model's device
+        x_flat = x.reshape(n, -1).to(device=self.device, dtype=self.dtype)
+        gram = x_flat @ x_flat.t()          # (n, n)
+
+        # Zero diagonal
+        gram.fill_diagonal_(0.0)
+
+        # Row-means excluding diagonal (Szekely & Rizzo U-statistic)
+        row_sum = gram.sum(dim=1)           # (n,)
+        means = row_sum / float(n - 2)
+        means = means - means.sum() / (2.0 * float(n - 1))
+
+        # Center rows and columns, then zero diagonal again
+        gram = gram - means[:, None] - means[None, :]
+        gram.fill_diagonal_(0.0)
+
+        # Move to CPU immediately to free GPU memory
+        return gram.reshape(-1).cpu()
+
+    # ------------------------------------------------------------------
+    # Hook management
+    # ------------------------------------------------------------------
+
+    def _register_hooks(
+        self, model: nn.Module
+    ) -> Tuple[List[str], List, Dict[str, torch.Tensor]]:
+        """Register forward hooks on all leaf modules."""
+        activations: Dict[str, torch.Tensor] = {}
         handles = []
         names = []
 
-        def make_hook(name):
+        def make_hook(name: str):
             def hook(module, inp, out):
-                activations[name] = out[0].detach() if isinstance(out, tuple) else out.detach()
+                # Detach immediately; keep on whatever device the model uses
+                act = out[0].detach() if isinstance(out, tuple) else out.detach()
+                activations[name] = act
             return hook
 
         for name, module in model.named_modules():
             if self._is_leaf(module):
-                handle = module.register_forward_hook(make_hook(name))
-                handles.append(handle)
+                handles.append(module.register_forward_hook(make_hook(name)))
                 names.append(name)
 
         return names, handles, activations
 
-
-    def _remove_handles(self, handles: List[torch.utils.hooks.RemovableHandle]) -> None:
+    @staticmethod
+    def _remove_hooks(handles: List) -> None:
         for h in handles:
             try:
                 h.remove()
             except Exception:
                 pass
 
+    # ------------------------------------------------------------------
+    # Per-batch gram accumulation
+    # ------------------------------------------------------------------
 
-    def _u_centered_gram_vector(self, x: torch.Tensor) -> torch.Tensor:
-        n = x.shape[0]
-        x2 = x.reshape(n, -1)
-        gram = x2 @ x2.t()  # [n, n]
-        if n <= 2:
-            return torch.zeros((n * n,), device=self.device, dtype=self.dtype)
+    def _grams_for_names(
+        self,
+        names: List[str],
+        activations: Dict[str, torch.Tensor],
+        expected_batch_size: int,
+    ) -> Tuple[List[int], List[torch.Tensor]]:
+        """
+        Compute u-centred gram vectors for every name that has an activation
+        whose first dimension equals `expected_batch_size`.
 
-        # zero diagonal
-        gram = gram.clone()
-        gram.fill_diagonal_(0.0)
-        gram = gram.to(device=self.device, dtype=self.dtype)
+        Layers are silently skipped when:
+          - No activation was recorded (hook never fired this forward pass).
+          - The activation is a scalar (dim == 0).
+          - The activation's first dimension != expected_batch_size.
+            This filters out embedding tables, RNN hidden states, layers
+            called multiple times per forward pass, etc., all of which would
+            produce gram vectors of the wrong length and break torch.stack.
 
-        # means excluding diagonal: sum / (n - 2)
-        row_sum = gram.sum(dim=1)  # shape [n]
-        means = row_sum / float(n - 2)
-
-        # subtract global correction
-        means = means - means.sum() / (2.0 * (n - 1))
-
-        # center
-        gram = gram - means[:, None] - means[None, :]
-
-        # zero diagonal again
-        gram.fill_diagonal_(0.0)
-
-        return gram.reshape(-1)
-    
-
-
-    def _collect_layer_grams_from_hooks(self, names: List[str], activations: Dict[str, tensor]) -> List[tensor]:
+        Returns:
+            present_idx : indices into `names` for which a gram was computed
+            grams       : corresponding gram vectors (all on CPU, same length)
+        """
+        present_idx = []
         grams = []
-        for n in names:
-            tensor_act = activations.get(n)
-            if tensor_act is None:
-                grams.append(None)
-            else:
-                grams.append(self._u_centered_gram_vector(tensor_act))
-        return grams
+        expected_gram_len = expected_batch_size * expected_batch_size
 
+        for idx, name in enumerate(names):
+            act = activations.get(name)
+            if act is None or act.dim() == 0:
+                continue
+            if act.shape[0] != expected_batch_size:
+                # First dim is not the batch axis — skip this layer
+                continue
+            try:
+                g = self._u_centered_gram_vector(act)
+            except RuntimeError as exc:
+                if "out of memory" in str(exc).lower():
+                    torch.cuda.empty_cache()
+                    g = self._u_centered_gram_vector(act.cpu())
+                else:
+                    raise
+            # Sanity-check: gram must be exactly batch*batch elements
+            if g.shape[0] != expected_gram_len:
+                continue
+            present_idx.append(idx)
+            grams.append(g)
+        return present_idx, grams
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def compare_models(
         self,
@@ -92,126 +164,148 @@ class CKA(Metric):
         dataloader: torch.utils.data.DataLoader,
         num_batches: int = 10,
     ) -> np.ndarray:
+        """
+        Compute the CKA similarity matrix between every pair of leaf layers
+        from model1 (rows) and model2 (columns).
 
-        device = self.device
-        model1.to(device).eval()
-        if model2 is not None:
-            model2.to(device).eval()
+        Args:
+            model1      : First model.
+            model2      : Second model. Pass None to compare model1 with itself.
+            dataloader  : Yields (inputs, *extras); only inputs are forwarded.
+            num_batches : How many batches to accumulate over.
+
+        Returns:
+            cka_matrix: np.ndarray of shape (n_layers1, n_layers2), values in [0, 1].
+        """
+        same_model = model2 is None or model2 is model1
+        model1.to(self.device).eval()
+        if not same_model:
+            model2.to(self.device).eval()
         else:
             model2 = model1
 
-        # register hooks
         names1, handles1, acts1 = self._register_hooks(model1)
-        names2, handles2, acts2 = self._register_hooks(model2)
+        if same_model:
+            names2, handles2, acts2 = names1, handles1, acts1
+        else:
+            names2, handles2, acts2 = self._register_hooks(model2)
 
-        n1 = len(names1)
-        n2 = len(names2)
+        n1, n2 = len(names1), len(names2)
 
-        hsic_acc = torch.zeros((n1, n2), device=device, dtype=self.dtype)
-        hsic_self1 = torch.zeros((n1,), device=device, dtype=self.dtype)
-        hsic_self2 = torch.zeros((n2,), device=device, dtype=self.dtype)
+        # Accumulators stay on CPU — they are updated with scalar adds
+        hsic_acc   = torch.zeros((n1, n2),  dtype=self.dtype)   # cross
+        hsic_self1 = torch.zeros((n1,),     dtype=self.dtype)   # model1 self
+        hsic_self2 = torch.zeros((n2,),     dtype=self.dtype)   # model2 self
 
         batches_done = 0
         with torch.no_grad():
-            for i, (batch, *rest) in enumerate(dataloader, start=1):
-                batch = batch.to(device)
-                # clear activations dicts to avoid stale entries
+            for batch, *_ in dataloader:
+                batch = batch.to(self.device)
+
                 acts1.clear()
-                acts2.clear()
+                if not same_model:
+                    acts2.clear()
 
                 model1(batch)
-                if model1 is not model2:
+                if not same_model:
                     model2(batch)
 
-                # collect grams in consistent order; skip layers missing for this forward
-                grams1 = self._collect_layer_grams_from_hooks(names1, acts1)
-                grams2 = self._collect_layer_grams_from_hooks(names2, acts2)
+                batch_size = batch.shape[0]
+                idx1, grams1 = self._grams_for_names(names1, acts1, batch_size)
+                if same_model:
+                    idx2, grams2 = idx1, grams1
+                else:
+                    idx2, grams2 = self._grams_for_names(names2, acts2, batch_size)
 
-                # convert lists to stacked tensors; when a layer had no activation this iteration, we skip it
-                # But shapes must align: each gram is (n*n,)
-                present1_idx = [idx for idx, g in enumerate(grams1) if g is not None]
-                present2_idx = [idx for idx, g in enumerate(grams2) if g is not None]
-
-                if len(present1_idx) == 0 or len(present2_idx) == 0:
-                    # nothing to do this batch
+                if not idx1 or not idx2:
                     continue
 
-                stacked1 = torch.stack([grams1[i] for i in present1_idx], dim=0)  # [L1p, P]
-                stacked2 = torch.stack([grams2[i] for i in present2_idx], dim=0)  # [L2p, P]
+                # Stack on CPU and do a single matmul — no GPU needed here
+                G1 = torch.stack(grams1, dim=0)   # (L1p, P)
+                G2 = torch.stack(grams2, dim=0)   # (L2p, P)
 
-                # accumulate cross HSIC for present layers
-                # we need to add into hsic_acc at the correct row/col positions
-                block = stacked1 @ stacked2.t()  # [L1p, L2p]
-                for a, ii in enumerate(present1_idx):
-                    for b, jj in enumerate(present2_idx):
+                block = G1 @ G2.t()               # (L1p, L2p)  — CPU matmul
+                for a, ii in enumerate(idx1):
+                    for b, jj in enumerate(idx2):
                         hsic_acc[ii, jj] += block[a, b]
 
-                # accumulate self terms for normalization
-                self_sq1 = torch.einsum('ij,ij->i', stacked1, stacked1)  # [L1p]
-                for a, ii in enumerate(present1_idx):
+                self_sq1 = (G1 * G1).sum(dim=1)   # (L1p,)
+                for a, ii in enumerate(idx1):
                     hsic_self1[ii] += self_sq1[a]
 
-                self_sq2 = torch.einsum('ij,ij->i', stacked2, stacked2)  # [L2p]
-                for b, jj in enumerate(present2_idx):
-                    hsic_self2[jj] += self_sq2[b]
+                if same_model:
+                    # Reuse self_sq1 for model2
+                    for b, jj in enumerate(idx2):
+                        hsic_self2[jj] += self_sq1[b]
+                else:
+                    self_sq2 = (G2 * G2).sum(dim=1)
+                    for b, jj in enumerate(idx2):
+                        hsic_self2[jj] += self_sq2[b]
 
                 batches_done += 1
+                # Free any intermediate GPU tensors accumulated this batch
+                if self.device.type == "cuda":
+                    torch.cuda.empty_cache()
+
                 if batches_done >= num_batches:
                     break
 
-        # remove hooks
-        self._remove_handles(handles1)
-        # if different model, remove second handles; if same model handles2==handles1, they were already removed
-        if model1 is not model2:
-            self._remove_handles(handles2)
+        self._remove_hooks(handles1)
+        if not same_model:
+            self._remove_hooks(handles2)
 
-        # finalize normalization: CKA = HSIC / sqrt(HSIC_xx * HSIC_yy)
-        # For layers with zero denom, clamp to small positive to avoid div0
-        denom = torch.sqrt(hsic_self1[:, None] * hsic_self2[None, :]).clamp(min=1e-12)
-        cka_matrix = (hsic_acc / denom).cpu().numpy()
-        cka_matrix = np.clip(cka_matrix, 0.0, 1.0)
-        return cka_matrix
-
+        # CKA = HSIC_xy / sqrt(HSIC_xx * HSIC_yy)
+        denom = torch.sqrt(
+            hsic_self1[:, None] * hsic_self2[None, :]
+        ).clamp(min=1e-12)
+        cka_matrix = (hsic_acc / denom).numpy()
+        return np.clip(cka_matrix, 0.0, 1.0)
 
     def compare_outputs(
-        self, 
-        model1: nn.Module, 
+        self,
+        model1: nn.Module,
         model2: Optional[nn.Module],
-        dataloader: torch.utils.data.DataLoader, 
-        num_batches: int = 10
+        dataloader: torch.utils.data.DataLoader,
+        num_batches: int = 10,
     ) -> float:
         """
-        Convenience: compute CKA between model outputs (final forward outputs).
-        Returns scalar similarity.
-        """
+        CKA similarity between the final outputs of model1 and model2.
 
-        device = self.device
-        model1.to(device).eval()
-        if model2 is not None:
-            model2.to(device).eval()
+        Returns:
+            Scalar in [0, 1].
+        """
+        same_model = model2 is None or model2 is model1
+        model1.to(self.device).eval()
+        if not same_model:
+            model2.to(self.device).eval()
         else:
             model2 = model1
 
-        outputs1 = []
-        outputs2 = []
+        # Accumulate gram vectors incrementally on CPU rather than
+        # concatenating all outputs and computing one giant gram.
+        hsic_xy = torch.tensor(0.0, dtype=self.dtype)
+        hsic_xx = torch.tensor(0.0, dtype=self.dtype)
+        hsic_yy = torch.tensor(0.0, dtype=self.dtype)
+
         with torch.no_grad():
-            for i, (batch, *rest) in enumerate(dataloader, start=1):
-                batch = batch.to(device)
-                out1 = model1(batch)
-                out2 = model2(batch) if model1 is not model2 else out1
-                outputs1.append(out1.detach())
-                outputs2.append(out2.detach())
+            for i, (batch, *_) in enumerate(dataloader, start=1):
+                batch = batch.to(self.device)
+                out1 = model1(batch).detach()
+                out2 = model2(batch).detach() if not same_model else out1
+
+                gx = self._u_centered_gram_vector(out1)   # CPU
+                gy = self._u_centered_gram_vector(out2)   # CPU
+
+                hsic_xy += torch.dot(gx, gy)
+                hsic_xx += torch.dot(gx, gx)
+                hsic_yy += torch.dot(gy, gy)
+
+                if self.device.type == "cuda":
+                    torch.cuda.empty_cache()
+
                 if i >= num_batches:
                     break
 
-        X = torch.cat(outputs1, dim=0)
-        Y = torch.cat(outputs2, dim=0)
-        gx = self._u_centered_gram_vector(X)
-        gy = self._u_centered_gram_vector(Y)
-        hsic = torch.dot(gx, gy)
-        nx = torch.linalg.norm(gx)
-        ny = torch.linalg.norm(gy)
-        sim = (hsic / (nx * ny)).item() if nx > 0 and ny > 0 else 0.0
-        if np.isnan(sim):
-            sim = 0.0
-        return float(sim)
+        denom = torch.sqrt(hsic_xx * hsic_yy).clamp(min=1e-12)
+        sim = float((hsic_xy / denom).item())
+        return float(np.clip(sim, 0.0, 1.0)) if not np.isnan(sim) else 0.0
