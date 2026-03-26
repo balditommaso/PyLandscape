@@ -9,12 +9,11 @@ class Bezier(Module):
     """
     Formulation of the Bezier curve
     """
-    def __init__(self, num_bends):
+    def __init__(self, num_bends: int):
         super(Bezier, self).__init__()
         self.register_buffer(
             "binom",
-            torch.Tensor(binom(num_bends - 1, np.arange(num_bends), 
-            dtype=np.float32))
+            torch.Tensor(binom(num_bends - 1, np.arange(num_bends), dtype=np.float32))
         )
         self.register_buffer("range", torch.arange(0, float(num_bends)))
         self.register_buffer("rev_range", torch.arange(float(num_bends - 1), -1, -1))
