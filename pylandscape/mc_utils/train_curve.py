@@ -81,16 +81,18 @@ class Interpolate:
             model = self.start_model.eval()
         if t == 1.0:
             model = self.end_model.eval()
+            
         with tqdm(dataloader, unit="batch") as tepoch:
             tepoch.set_description(f"Testing with t = {t.item():.3f}")
             
             for batch, target in tepoch:
                 batch, target = batch.to(self.device), target.to(self.device)
                 
-                if t != 0.0 and t != 1.0:
+                if 0.0 < t < 1.0:
                     pred = model(batch, t)
                 else:
                     pred = model(batch)
+                    
                 loss = self.criterion(pred, target)
                 
                 loss_hist_test += loss.item()

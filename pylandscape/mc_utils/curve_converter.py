@@ -31,23 +31,21 @@ def curved_model(model: Module, fix_points: List[bool]) -> Module:
                                  boundary models.
 
     Returns:
-        Module: _description_
+        Module: Curved version of the target model.
     """
     curve_model = deepcopy(model)
     # iterate over the module of the model and convert them to the quantized version
     for name, module in model.named_modules():
-        module = deepcopy(module)
-        curve_module = None
-        
+        module = deepcopy(module)        
         # quantized
-        if isinstance(module, qnn.QuantConv2d) and hasattr(module, "quant_weight"):
-            curve_module = QuantConv2d(module, fix_points)
-        elif isinstance(module, qnn.QuantLinear) and hasattr(module, "quant_weight"):
-            curve_module = QuantLinear(module, fix_points)
-        elif isinstance(module, QuantNonLinearActLayer):
-            curve_module = QuantNLAL(module, fix_points)
+        # if isinstance(module, qnn.QuantConv2d) and hasattr(module, "quant_weight"):
+        #     curve_module = QuantConv2d(module, fix_points)
+        # elif isinstance(module, qnn.QuantLinear) and hasattr(module, "quant_weight"):
+        #     curve_module = QuantLinear(module, fix_points)
+        # elif isinstance(module, QuantNonLinearActLayer):
+        #     curve_module = QuantNLAL(module, fix_points)
         # full precision
-        elif isinstance(module, nn.ConvTranspose2d):
+        if isinstance(module, nn.ConvTranspose2d):
             curve_module = ConvTranspose2D(module, fix_points)
         elif isinstance(module, nn.Linear):
             curve_module = Linear(module, fix_points)

@@ -83,4 +83,7 @@ class ModeConnectivity(Metric):
             t.data.fill_(t_value)
             loss[i] = interpolate.sample_model(test_dataloader, t)
         # return the max deviation
-        return self.max_deviation(loss)
+        
+        self.results["mc"] = loss
+        self.results["mc_max_deviation"] = self.max_deviation(loss)
+        return loss
