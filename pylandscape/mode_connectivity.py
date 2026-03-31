@@ -1,12 +1,10 @@
 import torch
-from torch.types import _device
 from torch import nn, tensor
 from torch.utils.data import DataLoader
-from typing import Callable
+from typing import Callable, Optional
 from . import Metric
 from .mc_utils import curves, Interpolate
 import torch
-from torch.types import _device
 from torch import nn, tensor
 from torch.utils.data import DataLoader
 from typing import Callable
@@ -57,7 +55,6 @@ class ModeConnectivity(Metric):
         max_epochs: int = 50,
         init_linear: bool = True,
         lr_scheduler: bool = True,
-        device: _device = "cpu"
     ) -> float:
         # select the curve for the interpolation
         curve = getattr(curves, curve)
@@ -72,7 +69,7 @@ class ModeConnectivity(Metric):
             num_bends=num_bends,
             init_linear=init_linear,
             lr_scheduler=lr_scheduler,
-            device=device
+            device=self.device
         )
         
         interpolate.train_curve(train_dataloader, max_epochs)

@@ -22,7 +22,6 @@ class Interpolate:
         lr_scheduler: bool = True,
         device: _device = "cpu"
     ) -> None:
-        # TODO: when we pass the architecture the difference metter
         self.model = CurveNet(curve, fix_end, num_bends)
         # load parameters in the boundaries 
         self.model.import_base_parameters(fix_start, 0)
