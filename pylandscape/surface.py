@@ -276,10 +276,12 @@ class Surface(Metric):
                                                        in these points.
         """
         # get the top eigenvectors as direction
-        hessian_comp = pyhessian.hessian(self.model, 
-                                         self.criterion, 
-                                         dataloader=self.dataloader, 
-                                         cuda=self.device.type == "cuda")
+        hessian_comp = pyhessian.hessian(
+            self.model, 
+            self.criterion, 
+            dataloader=self.dataloader, 
+            cuda=self.device.type == "cuda"
+        )
         _, top_eigenvector = hessian_comp.eigenvalues(maxIter=max_iter, tol=1e-5, top_n=2)
         # coefficients to perturb the model
         min_lam, max_lam = lams
@@ -299,10 +301,12 @@ class Surface(Metric):
         max_iter: int = 100
     ) -> Sequence[np.ndarray]:
         # get the top n eigenvectors
-        hessian_comp = pyhessian.hessian(self.model, 
-                                         self.criterion, 
-                                         dataloader=self.dataloader, 
-                                         cuda=self.device.type == "cuda")
+        hessian_comp = pyhessian.hessian(
+            self.model, 
+            self.criterion, 
+            dataloader=self.dataloader, 
+            cuda=self.device.type == "cuda"
+        )
         _, top_eigenvector = hessian_comp.eigenvalues(maxIter=max_iter, tol=1e-5, top_n=n)
         
         # coefficients to perturb the model
