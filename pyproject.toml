@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pylandscape"
-version = "0.1.1a2"
+version = "0.1.1"
 description = "Python package to explore the loss landscape of Machine Learning models"
 authors = ["Tommaso Baldi"]
 license = "MIT"
@@ -16,7 +16,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
 numpy = "*"
-torch = "^2.10"
+torch = "2.10"
 tqdm = "*"
 brevitas = "^0.12.1"
 torchvision = "^0.25.0"

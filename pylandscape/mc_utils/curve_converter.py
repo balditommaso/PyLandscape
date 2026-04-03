@@ -51,6 +51,10 @@ def curved_model(model: Module, fix_points: List[bool]) -> Module:
             curve_module = Linear(module, fix_points)
         elif isinstance(module, nn.Conv2d):
             curve_module = Conv2d(module, fix_points)
+        elif isinstance(module, qnn.QuantIdentity):
+            curve_module = nn.Identity()
+        elif isinstance(module, qnn.QuantReLU):
+            curve_module = nn.ReLU()
 
         else:
             continue
