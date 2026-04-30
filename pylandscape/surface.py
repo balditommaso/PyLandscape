@@ -47,36 +47,34 @@ class Surface(Metric):
     
     @staticmethod
     def get_params(model: nn.Module, directions: List[tensor], step_values: List[float]) -> nn.Module:
-        """
-        Generate a new model by perturbing its parameters along multiple directions.
-
-        Args:
-            model (nn.Module): Original target model.
-            directions (List[torch.Tensor]): List of N direction tensors for perturbation.
-            step_values (List[float]): List of N magnitudes for perturbations.
-
-        Returns:
-            nn.Module: Model shifted in the loss landscape.
-        """
         assert len(directions) == len(step_values), "Number of directions and step values must match!"
         
         perturbed_model = deepcopy(model)
-        
-        target_parameters = [
-            (name, base_param, perturbed_param)
-            for (name, base_param), perturbed_param in zip(
-                model.named_parameters(), perturbed_model.parameters()
-            )
+
+        # Filter named parameters to only weights and biases
+        filtered_params = [
+            (name, base_param)
+            for name, base_param in model.named_parameters()
             if "weight" in name or "bias" in name
         ]
-        # iterate over model parameters and apply perturbations in that direction
-        for name, module, perturbed_module, *dir_vect in zip(target_parameters, *directions):
-            assert all(d.shape == module.data.shape for d in dir_vect), \
+        filtered_perturbed_params = [
+            param
+            for name, param in perturbed_model.named_parameters()
+            if "weight" in name or "bias" in name
+        ]
+
+        # Each direction must have one tensor per *filtered* parameter
+        for (name, base_param), perturbed_param, dir_vect in zip(
+            model.named_parameters(), perturbed_model.parameters(), zip(*directions)
+        ):
+            assert all(d.shape == base_param.data.shape for d in dir_vect), \
                 f"Tensor mismatch while adding perturbation! ({name})"
-                
-            # apply perturbation
+            
+            if not name.endswith("weigth") and not name.endswith("bias"):
+                continue
+            
             perturbation = sum(step * d for step, d in zip(step_values, dir_vect))
-            perturbed_module.data = module.data + perturbation
+            perturbed_param.data = base_param.data + perturbation
 
         return perturbed_model
     
