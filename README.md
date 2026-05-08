@@ -76,3 +76,16 @@ Hide for double blinded peer reviews.
     --num_models 3
 ``` -->
 
+## Research
+If you used `Pylandscape` consider to cite:
+```
+@misc{baldi2025losslandscapeanalysisreliable,
+      title={Loss Landscape Analysis for Reliable Quantized ML Models for Scientific Sensing}, 
+      author={Tommaso Baldi and Javier Campos and Olivia Weng and Caleb Geniesse and Nhan Tran and Ryan Kastner and Alessandro Biondi},
+      year={2025},
+      eprint={2502.08355},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2502.08355}, 
+}
+```
